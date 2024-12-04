@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="assets/styles/styles.css">
 </head>
 <body>
-    <!-- Navbar -->
+    <!-- Navbar informacion-->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
             <a class="navbar-brand" href="index.php">Sistema de Documentación</a>
