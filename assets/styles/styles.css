@@ -1,0 +1,264 @@
+/* Global Styles */
+body {
+    font-family: 'Arial', sans-serif; /* Homologar fuente */
+    background-color: #f8f9fa; /* Fondo general */
+    color: #333; /* Color de texto general */
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Georgia', serif; /* Fuente para encabezados */
+    color: #343a40; /* Color para encabezados */
+}
+
+p {
+    margin: 0 0 10px;
+}
+
+/* Navbar Styles */
+.navbar-nav .nav-link {
+    color: #b39064; /* Official government color */
+    transition: color 0.3s;
+}
+
+.navbar-nav .nav-link:hover {
+    color: #fff;
+}
+
+/* Footer Styles */
+footer {
+    background-color: #343a40; /* Fondo del pie de página */
+    color: #fff; /* Color del texto del pie de página */
+    padding: 20px 0;
+    text-align: center;
+}
+
+footer h4 {
+    color: #b39064; /* Official government color */
+}
+
+footer ul {
+    list-style: none;
+    padding: 0;
+}
+
+footer ul a {
+    text-decoration: none;
+    color: #b39064; /* Official government color */
+    transition: color 0.3s;
+}
+
+footer ul a:hover {
+    text-decoration: underline;
+    color: #fff;
+}
+
+/* Hero Section */
+.hero {
+    background-color: #343a40; /* Fondo sólido */
+    color: #fff;
+    height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 20px;
+}
+
+.hero h1 {
+    font-size: 3rem;
+    margin-bottom: 20px;
+}
+
+.hero p {
+    font-size: 1.5rem;
+}
+
+.btn-hero {
+    font-size: 1.2rem;
+    padding: 10px 20px;
+    margin: 5px; /* Espaciado entre botones */
+}
+
+/* Info Section */
+.info-section {
+    padding: 60px 20px;
+    background-color: #fff;
+}
+
+.info-section .icon {
+    font-size: 3rem;
+    color: #b39064;
+    margin-bottom: 20px;
+}
+
+.info-section .card-title {
+    font-size: 1.5rem;
+}
+
+.info-section .card-text {
+    font-size: 1rem;
+}
+
+/* Objectives Section */
+.objectives-section {
+    padding: 60px 20px;
+    background-color: #f1f1f1;
+}
+
+.objectives-section .icon {
+    font-size: 3rem;
+    color: #b39064;
+    margin-bottom: 20px;
+}
+
+.objectives-section .card-title {
+    font-size: 1.5rem;
+}
+
+.objectives-section .card-text {
+    font-size: 1rem;
+}
+
+/* Módulo de Ayuda */
+.help-module h2 {
+    color: #b39064;
+    margin-bottom: 20px;
+}
+
+.accordion-button {
+    background-color: #f8f9fa; /* Fondo del acordeón */
+    color: #343a40; /* Texto */
+    font-weight: bold;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.accordion-button:not(.collapsed) {
+    color: #fff; /* Texto activo */
+    background-color: #b39064; /* Fondo activo */
+}
+
+.accordion-button:hover {
+    color: #fff;
+    background-color: #9f7c52;
+}
+
+.accordion-item {
+    border: none;
+    border-bottom: 1px solid #ddd;
+}
+
+.accordion-body {
+    background-color: #fff;
+    color: #333;
+}
+
+.video-help .ratio {
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 15px;
+}
+
+.video-help p {
+    font-size: 1rem;
+    margin-top: 10px;
+    color: #343a40;
+    font-weight: bold;
+    text-align: center;
+}
+
+/* Form Styles */
+form .form-label {
+    font-weight: bold;
+    color: #343a40;
+}
+
+form .form-control {
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+    padding: 10px;
+}
+
+form .form-control:focus {
+    border-color: #b39064;
+    box-shadow: 0 0 5px rgba(179, 144, 100, 0.5);
+}
+
+form .error {
+    color: red;
+    font-size: 0.9rem;
+}
+
+form .mensaje {
+    margin-top: 20px;
+    font-size: 1rem;
+    color: green;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: #b39064;
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: #9f7c52;
+}
+
+.btn-secondary {
+    background-color: #343a40;
+    border: none;
+}
+
+.btn-secondary:hover {
+    background-color: #2c2f33;
+}
+
+/* AOS Animations */
+[data-aos] {
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #b39064;
+    border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #9f7c52;
+}
+
+/* Media Queries */
+@media (max-width: 768px) {
+    .hero h1 {
+        font-size: 2.5rem;
+    }
+
+    .hero p {
+        font-size: 1.2rem;
+    }
+
+    .info-section, .objectives-section {
+        padding: 40px 10px;
+    }
+
+    .help-module h2 {
+        font-size: 1.5rem;
+    }
+
+    .video-help p {
+        font-size: 0.9rem;
+    }
+}
