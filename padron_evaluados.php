@@ -1,13 +1,13 @@
 <?php
 session_start();
 require 'conexion.php';
-
+/*
 // Verificar si el usuario tiene permisos de acceso
 if (!isset($_SESSION['TipoUsuario']) || $_SESSION['TipoUsuario'] !== 'Administrador') {
     header("Location: index.php");
     exit;
 }
-
+*/
 // Buscar evaluados
 $evaluados = [];
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['buscar'])) {

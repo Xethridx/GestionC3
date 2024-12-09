@@ -1,9 +1,7 @@
 <?php
-session_start(); // Iniciar sesión
-if (isset($_SESSION['usuario'])) {
-    header("Location: dashboard.php"); // Redirigir si ya está autenticado
-    exit();
-}
+session_start();
+$error = $_SESSION['error'] ?? null;
+unset($_SESSION['error']);
 ?>
 
 <!DOCTYPE html>
@@ -20,22 +18,45 @@ if (isset($_SESSION['usuario'])) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="assets/styles/styles.css">
+    <style>
+        .hero-section {
+            background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('assets/images/hero-bg.jpg') center/cover no-repeat;
+            color: #fff;
+            text-align: center;
+            padding: 80px 20px;
+            border-radius: 10px;
+        }
+        .lead { font-size: 1.2rem; }
+        .card { border: none; }
+        .btn-primary {
+            background-color: #0056b3;
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #003f7f;
+        }
+    </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
     <?php include 'navbar.php'; ?>
 
     <!-- Hero Section -->
-    <section class="hero text-center text-white d-flex align-items-center justify-content-center" style="background: url('images/hero-bg.jpg') no-repeat center center/cover; height: 60vh;">
-        <div class="overlay" style="background-color: rgba(0, 0, 0, 0.6); position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
-        <div class="container position-relative">
-            <h1 class="display-4 fw-bold">Bienvenido a Gestión Documental C3</h1>
-            <p class="lead">Optimiza la recepción y validación de documentos en un entorno seguro y eficiente.</p>
+    <section class="hero-section mb-5">
+        <div class="container">
+            <h1 class="display-4 fw-bold">Gestión Documental C3</h1>
+            <p class="lead">Simplificando la administración documental para la Policía Estatal de Guerrero.</p>
         </div>
     </section>
 
-    <!-- Login Section -->
-    <section class="container my-5">
-        <div class="row justify-content-center">
+    <!-- Contenedor Principal -->
+    <div class="container my-5">
+        <div class="row">
+            <!-- Columna izquierda: Mensaje de bienvenida -->
+            <div class="col-md-6 d-flex flex-column justify-content-center align-items-start">
+                <h2 class="fw-bold">Optimización y Transparencia</h2>
+                <p class="lead">Nuestra plataforma asegura procesos ágiles y seguros en la recepción y validación de documentos, fortaleciendo la confianza institucional.</p>
+            </div>
+            <!-- Columna derecha: Login -->
             <div class="col-md-6">
                 <div class="card shadow">
                     <div class="card-body">
@@ -49,6 +70,9 @@ if (isset($_SESSION['usuario'])) {
                                 <label for="password" class="form-label">Contraseña</label>
                                 <input type="password" class="form-control" id="password" name="password" placeholder="Ingresa tu contraseña" required>
                             </div>
+                            <?php if ($error): ?>
+                                <div class="alert alert-danger text-center"><?php echo $error; ?></div>
+                            <?php endif; ?>
                             <button type="submit" class="btn btn-primary w-100">Iniciar Sesión</button>
                         </form>
                         <div class="mt-3 text-center">
@@ -59,7 +83,7 @@ if (isset($_SESSION['usuario'])) {
                 </div>
             </div>
         </div>
-    </section>
+    </div>
 
     <?php include 'footer.php'; ?>
 

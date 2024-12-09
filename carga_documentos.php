@@ -1,7 +1,7 @@
 <?php
 session_start();
 require 'conexion.php';
-
+/*
 // Verificar si el usuario tiene permisos de acceso
 if (!isset($_SESSION['TipoUsuario']) || $_SESSION['TipoUsuario'] !== 'Administrador') {
     header("Location: index.php");
@@ -36,7 +36,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['documento'])) {
 }
 
 // Obtener la lista de evaluados
-$evaluados = $conexion->query("SELECT * FROM evaluados");
+$evaluados = $conexion->query("SELECT * FROM evaluados");*/
 ?>
 
 <!DOCTYPE html>

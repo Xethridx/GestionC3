@@ -1,7 +1,7 @@
 <?php
 session_start();
 require 'conexion.php';
-
+/*
 // Verificar si el usuario tiene permisos de administrador
 if (!isset($_SESSION['TipoUsuario']) || $_SESSION['TipoUsuario'] !== 'Administrador') {
     header("Location: index.php");
@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Obtener la lista de usuarios
-$usuarios = $conexion->query("SELECT * FROM usuarios");
+$usuarios = $conexion->query("SELECT * FROM usuarios"); */
 ?>
 
 <!DOCTYPE html>
@@ -127,7 +127,7 @@ $usuarios = $conexion->query("SELECT * FROM usuarios");
             </tbody>
         </table>
     </div>
-
+    <?php include 'footer.php'; ?>
     <!-- Modal para agregar usuario -->
     <div class="modal fade" id="modalAgregar" tabindex="-1" aria-labelledby="modalAgregarLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -166,6 +166,7 @@ $usuarios = $conexion->query("SELECT * FROM usuarios");
                 </div>
             </form>
         </div>
+        
     </div>
 
     <!-- Modal para editar usuario -->

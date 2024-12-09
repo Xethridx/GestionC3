@@ -21,4 +21,4 @@
                 </div>
             </div>
         </div>
-    </footer>logoGuerreroEscudo.png
+    </footer>

@@ -1,7 +1,7 @@
 <?php
 session_start();
 require 'conexion.php';
-
+/*
 // Verificar si el usuario tiene permisos de acceso
 if (!isset($_SESSION['TipoUsuario']) || $_SESSION['TipoUsuario'] !== 'Administrador') {
     header("Location: index.php");
@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Obtener la lista de solicitudes
-$solicitudes = $conexion->query("SELECT * FROM solicitudes");
+$solicitudes = $conexion->query("SELECT * FROM solicitudes");*/
 ?>
 
 <!DOCTYPE html>

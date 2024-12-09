@@ -1,4 +1,8 @@
 <?php
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 session_start();
 include 'conexion.php';
 
@@ -6,42 +10,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $usuario = $_POST['usuario'];
     $password = $_POST['password'];
 
-    // Consultar el usuario en la base de datos
-    $query = "SELECT * FROM usuarios WHERE NUsuario = ? AND Contraseña = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("ss", $usuario, $password);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $query = "SELECT * FROM usuarios WHERE NUsuario = ?";
+    $stmt = $pdo->prepare($query);
+    $stmt->execute([$usuario]);
+    $row = $stmt->fetch();
 
-    if ($result->num_rows === 1) {
-        $row = $result->fetch_assoc();
+    if ($row && password_verify($password, $row['Contraseña'])) {
         $_SESSION['usuario'] = $row['NUsuario'];
         $_SESSION['nombre'] = $row['Nombre'];
-        $_SESSION['tipo_usuario'] = $row['tipo_usuario']; // Guardar el rol del usuario
+        $_SESSION['tipo_usuario'] = $row['TipoUsuario'];
 
-        // Redirigir según el tipo de usuario
-        switch ($row['tipo_usuario']) {
+        switch ($row['TipoUsuario']) {
             case 'administrador':
-                header("Location: admin_dashboard.php");
+                header("Location: panel_administrador.php");
                 break;
             case 'gestor':
-                header("Location: gestor_dashboard.php");
+                header("Location: panel_gestor.php");
                 break;
             case 'enlace':
-                header("Location: enlace_dashboard.php");
-                break;
-            case 'administrativo':
-                header("Location: administrativo_dashboard.php");
+                header("Location: panel_enlace.php");
                 break;
             default:
+                $_SESSION['error'] = "Tipo de usuario no válido.";
                 header("Location: index.php");
         }
     } else {
-        // Credenciales incorrectas
         $_SESSION['error'] = "Usuario o contraseña incorrectos.";
         header("Location: index.php");
     }
-    $stmt->close();
-    $conn->close();
 }
-?>

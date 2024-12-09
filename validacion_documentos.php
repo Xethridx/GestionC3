@@ -1,7 +1,7 @@
 <?php
 session_start();
 require 'conexion.php';
-
+/*
 // Verificar si el usuario tiene permisos de acceso
 if (!isset($_SESSION['TipoUsuario']) || $_SESSION['TipoUsuario'] !== 'Validador') {
     header("Location: index.php");
@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (isset($_GET['evaluado_id'])) {
     $evaluado_id = $_GET['evaluado_id'];
     $documentos = $conexion->query("SELECT * FROM documentos WHERE evaluado_id = $evaluado_id");
-}
+}*/
 ?>
 
 <!DOCTYPE html>
