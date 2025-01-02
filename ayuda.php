@@ -1,51 +1,62 @@
+<?php
+session_start();
+$usuario = $_SESSION['usuario'] ?? 'Invitado';
 
+// Manejo de mensajes
+$mensaje = null;
 
+// Procesar formulario de tickets
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $asunto = htmlspecialchars($_POST['asunto']);
+    $descripcion = htmlspecialchars($_POST['descripcion']);
+
+    // Incluir conexión a la base de datos
+    include 'conexion.php';
+
+    try {
+        // Insertar ticket con PDO
+        $query = "INSERT INTO tickets (usuario, asunto, descripcion) VALUES (:usuario, :asunto, :descripcion)";
+        $stmt = $conn->prepare($query);
+        $stmt->bindParam(':usuario', $usuario, PDO::PARAM_STR);
+        $stmt->bindParam(':asunto', $asunto, PDO::PARAM_STR);
+        $stmt->bindParam(':descripcion', $descripcion, PDO::PARAM_STR);
+
+        if ($stmt->execute()) {
+            $mensaje = "¡Tu solicitud ha sido enviada con éxito!";
+        } else {
+            $mensaje = "Error al enviar la solicitud. Inténtalo de nuevo.";
+        }
+    } catch (PDOException $e) {
+        $mensaje = "Error en la base de datos: " . $e->getMessage();
+    }
+}
+?>
 
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Módulo de Ayuda</title>
+    <title>Ayuda y Soporte</title>
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="assets/styles/styles.css">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body>
-    <!-- Navbar informacion-->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="index.php">Sistema de Documentación</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="dashboard.php">Inicio</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="ayuda.php">Ayuda</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="logout.php">Cerrar Sesión</a>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <!-- Navbar -->
+    <?php include 'navbar.php'; ?>
 
     <!-- Hero Section -->
-    <div class="hero">
-        <div class="container">
+    <div class="hero-section" style="background-color: #343a40; color: #fff; padding: 50px 0;">
+        <div class="container text-center">
             <h1>Módulo de Ayuda</h1>
-            <p>Encuentra respuestas a tus preguntas y tutoriales para el uso del sistema.</p>
+            <p>Encuentra respuestas a tus preguntas y solicita soporte técnico.</p>
         </div>
     </div>
 
     <!-- FAQ Section -->
-    <div class="container my-5 help-module">
+    <div class="container my-5">
         <h2 class="text-center mb-4">Preguntas Frecuentes (FAQ)</h2>
         <div class="accordion" id="faqAccordion">
             <div class="accordion-item">
@@ -72,44 +83,28 @@
                     </div>
                 </div>
             </div>
-            <div class="accordion-item">
-                <h2 class="accordion-header" id="headingThree">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                        ¿Cómo sé si mi documentación fue validada?
-                    </button>
-                </h2>
-                <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#faqAccordion">
-                    <div class="accordion-body">
-                        Puedes consultar el estado de tu documentación en la sección de expedientes dentro de tu cuenta.
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
-    <!-- Video Help Section -->
-    <div class="container my-5 video-help">
-        <h2 class="text-center mb-4">Videos de Ayuda</h2>
-        <div class="row">
-            <div class="col-md-4">
-                <div class="ratio ratio-16x9">
-                    <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Cómo subir un documento" allowfullscreen></iframe>
-                </div>
-                <p>Cómo subir un documento al sistema</p>
+    <!-- Ticket Form -->
+    <div class="container my-5">
+        <h2 class="text-center mb-4">¿Necesitas ayuda? Envía una solicitud</h2>
+        <?php if ($mensaje): ?>
+            <div class="alert alert-success text-center"><?php echo $mensaje; ?></div>
+        <?php endif; ?>
+        <form action="ayuda.php" method="POST" class="row g-3">
+            <div class="col-md-6">
+                <label for="asunto" class="form-label">Asunto</label>
+                <input type="text" class="form-control" id="asunto" name="asunto" placeholder="Escribe el asunto" required>
             </div>
-            <div class="col-md-4">
-                <div class="ratio ratio-16x9">
-                    <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Escanear documentos en PDF" allowfullscreen></iframe>
-                </div>
-                <p>Escanear documentos en PDF correctamente</p>
+            <div class="col-md-12">
+                <label for="descripcion" class="form-label">Descripción</label>
+                <textarea class="form-control" id="descripcion" name="descripcion" rows="4" placeholder="Describe el problema" required></textarea>
             </div>
-            <div class="col-md-4">
-                <div class="ratio ratio-16x9">
-                    <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Consultar el estado de mis documentos" allowfullscreen></iframe>
-                </div>
-                <p>Consultar el estado de mis documentos</p>
+            <div class="col-md-12 text-center">
+                <button type="submit" class="btn btn-primary">Enviar Solicitud</button>
             </div>
-        </div>
+        </form>
     </div>
 
     <!-- Footer -->

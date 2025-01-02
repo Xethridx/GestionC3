@@ -1,35 +1,14 @@
 <?php
+// Iniciar sesión
 session_start();
-require 'conexion.php';
-/*
-// Verificar si el usuario tiene permisos de acceso
-if (!isset($_SESSION['TipoUsuario']) || $_SESSION['TipoUsuario'] !== 'Administrador') {
-    header("Location: index.php");
-    exit;
-}
-*/
-// Buscar evaluados
-$evaluados = [];
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['buscar'])) {
-    $busqueda = $_GET['buscar'];
-    $stmt = $conexion->prepare("SELECT * FROM evaluados WHERE nombre LIKE ? OR apellidos LIKE ? OR curp LIKE ?");
-    $param = "%" . $busqueda . "%";
-    $stmt->bind_param("sss", $param, $param, $param);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $evaluados = $result->fetch_all(MYSQLI_ASSOC);
+// Verificar si el usuario ha iniciado sesión como administrador o gestor
+if (!isset($_SESSION['usuario']) || ($_SESSION['rol'] !== 'administrador' && $_SESSION['rol'] !== 'enlace')) {
+    header("Location: login.php");
+    exit();
 }
 
-// Obtener documentos del evaluado seleccionado
-$documentos = [];
-if (isset($_GET['evaluado_id'])) {
-    $evaluado_id = $_GET['evaluado_id'];
-    $stmt = $conexion->prepare("SELECT * FROM documentos WHERE evaluado_id = ?");
-    $stmt->bind_param("i", $evaluado_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $documentos = $result->fetch_all(MYSQLI_ASSOC);
-}
+// Nombre del administrador
+$nombre_admin = htmlspecialchars($_SESSION['usuario']);
 ?>
 
 <!DOCTYPE html>
@@ -37,83 +16,101 @@ if (isset($_GET['evaluado_id'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Módulo de Padrón de Evaluados</title>
+    <title>Padrón de Evaluados</title>
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="assets/styles/styles.css">
 </head>
 <body>
-    <div class="container my-5">
-        <h1>Módulo de Padrón de Evaluados</h1>
+    <!-- Navbar -->
+<?php include 'navbar.php'; ?>
 
-        <!-- Formulario de búsqueda -->
-        <form class="my-4" method="GET">
-            <div class="input-group">
-                <input type="text" class="form-control" name="buscar" placeholder="Buscar por nombre, apellidos o CURP" value="<?= htmlspecialchars($_GET['buscar'] ?? '') ?>">
-                <button class="btn btn-primary" type="submit">Buscar</button>
+
+    <!-- Hero Section -->
+    <div class="bg-light py-4">
+        <div class="container text-center">
+            <h1 class="fw-bold">Padrón de Evaluados</h1>
+            <p class="lead">Consulta y gestiona la información de los evaluados en el sistema.</p>
+        </div>
+    </div>
+
+    <!-- Search Section -->
+    <div class="container my-5">
+        <h2 class="text-center mb-4">Búsqueda de Evaluados</h2>
+        <form class="row g-3">
+            <div class="col-md-4">
+                <label for="numeroOficio" class="form-label">Número de Oficio</label>
+                <input type="text" class="form-control" id="numeroOficio" name="numeroOficio" placeholder="Ej: OF-12345">
+            </div>
+            <div class="col-md-4">
+                <label for="nombreEvaluado" class="form-label">Nombre del Evaluado</label>
+                <input type="text" class="form-control" id="nombreEvaluado" name="nombreEvaluado" placeholder="Ej: Juan Pérez">
+            </div>
+            <div class="col-md-4">
+                <label for="curpEvaluado" class="form-label">CURP</label>
+                <input type="text" class="form-control" id="curpEvaluado" name="curpEvaluado" placeholder="Ej: ABCD123456HGR">
+            </div>
+            <div class="col-md-12 text-center">
+                <button type="submit" class="btn btn-primary mt-3"><i class="fas fa-search"></i> Buscar</button>
             </div>
         </form>
+    </div>
 
-        <!-- Resultados de búsqueda -->
-        <?php if (!empty($evaluados)): ?>
-            <h2>Resultados de Búsqueda</h2>
-            <table class="table table-striped">
+    <!-- Results Section -->
+    <div class="container my-5">
+        <h2 class="text-center mb-4">Resultados</h2>
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered">
                 <thead>
                     <tr>
-                        <th>Número de Solicitud</th>
+                        <th>Número de Oficio</th>
                         <th>Nombre</th>
-                        <th>Apellidos</th>
                         <th>CURP</th>
+                        <th>Corporación</th>
+                        <th>Categoría</th>
+                        <th>Municipio</th>
+                        <th>Estado de Documentación</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($evaluados as $evaluado): ?>
-                        <tr>
-                            <td><?= htmlspecialchars($evaluado['numero_solicitud']) ?></td>
-                            <td><?= htmlspecialchars($evaluado['nombre']) ?></td>
-                            <td><?= htmlspecialchars($evaluado['apellidos']) ?></td>
-                            <td><?= htmlspecialchars($evaluado['curp']) ?></td>
-                            <td>
-                                <a href="padron_evaluados.php?evaluado_id=<?= $evaluado['id'] ?>" class="btn btn-info btn-sm">Ver Documentos</a>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        <?php elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['buscar'])): ?>
-            <div class="alert alert-warning">No se encontraron resultados para la búsqueda.</div>
-        <?php endif; ?>
-
-        <!-- Visualización de documentos -->
-        <?php if (!empty($documentos)): ?>
-            <h2 class="mt-5">Documentos del Evaluado</h2>
-            <table class="table table-bordered">
-                <thead>
+                    <!-- Ejemplo de datos -->
                     <tr>
-                        <th>Tipo de Documento</th>
-                        <th>Archivo</th>
-                        <th>Estado</th>
-                        <th>Observaciones</th>
+                        <td>OF-12345</td>
+                        <td>Juan Pérez</td>
+                        <td>ABCD123456HGR</td>
+                        <td>Policía Estatal</td>
+                        <td>Oficial</td>
+                        <td>Acapulco</td>
+                        <td><span class="badge bg-success">Completo</span></td>
+                        <td>
+                            <a href="ver_documentos.php?id=1" class="btn btn-info btn-sm"><i class="fas fa-folder-open"></i> Ver Documentos</a>
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($documentos as $documento): ?>
-                        <tr>
-                            <td><?= htmlspecialchars($documento['tipo_documento']) ?></td>
-                            <td>
-                                <a href="<?= htmlspecialchars($documento['ruta_archivo']) ?>" target="_blank" class="btn btn-info btn-sm">Ver Documento</a>
-                            </td>
-                            <td><?= htmlspecialchars($documento['estado_validacion'] ?? 'Pendiente') ?></td>
-                            <td><?= htmlspecialchars($documento['observaciones'] ?? 'Ninguna') ?></td>
-                        </tr>
-                    <?php endforeach; ?>
+                    <tr>
+                        <td>OF-67890</td>
+                        <td>Ana López</td>
+                        <td>EFGH789012HGR</td>
+                        <td>Policía Estatal</td>
+                        <td>Inspector</td>
+                        <td>Chilpancingo</td>
+                        <td><span class="badge bg-warning">Pendiente</span></td>
+                        <td>
+                            <a href="ver_documentos.php?id=2" class="btn btn-info btn-sm"><i class="fas fa-folder-open"></i> Ver Documentos</a>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
-        <?php elseif (isset($_GET['evaluado_id'])): ?>
-            <div class="alert alert-warning">No se encontraron documentos para este evaluado.</div>
-        <?php endif; ?>
+        </div>
     </div>
 
+    <!-- Footer -->
+    <?php include 'footer.php'; ?>
+
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

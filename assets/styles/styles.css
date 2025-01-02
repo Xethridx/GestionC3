@@ -1,179 +1,149 @@
-/* Global Styles */
-body {
-    font-family: 'Arial', sans-serif; /* Homologar fuente */
-    background-color: #f8f9fa; /* Fondo general */
-    color: #333; /* Color de texto general */
+/* Variables de colores oficiales */
+:root {
+    --color-primario: #ab0033; /* Rojo oficial */
+    --color-secundario: #bc955c; /* Dorado */
+    --color-terciario: #54565a; /* Gris oscuro */
+    --color-fondo: #f8f9fa; /* Fondo claro general */
+    --color-texto: #333; /* Texto general */
+    --color-texto-inverso: #ffffff; /* Texto sobre colores oscuros */
+}
+
+/* Fuente global */
+html, body {
+    height: 100%;
     margin: 0;
-    padding: 0;
-    line-height: 1.6;
+    font-family: 'Roboto', sans-serif;
+    color: var(--color-texto);
+    background-color: var(--color-fondo);
+    display: flex;
+    flex-direction: column;
 }
 
-h1, h2, h3, h4, h5, h6 {
-    font-family: 'Georgia', serif; /* Fuente para encabezados */
-    color: #343a40; /* Color para encabezados */
+main {
+    flex: 1; /* Permite que el contenido principal ocupe el espacio disponible */
+    display: flex;
+    flex-direction: column;
 }
 
-p {
-    margin: 0 0 10px;
+/* Navbar */
+.navbar {
+    background-color: var(--color-primario); /* Oscuro igual que el footer */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Navbar Styles */
-.navbar-nav .nav-link {
-    color: #b39064; /* Official government color */
+.navbar-brand, .navbar-nav .nav-link {
+    color: var(--color-secundario);
+    font-weight: bold;
     transition: color 0.3s;
 }
 
-.navbar-nav .nav-link:hover {
-    color: #fff;
+.navbar-brand:hover, .navbar-nav .nav-link:hover {
+    color: var(--color-primario);
 }
 
-/* Footer Styles */
+.navbar-toggler {
+    border-color: var(--color-secundario);
+}
+
+.navbar-toggler-icon {
+    background-color: var(--color-secundario);
+}
+
+/* Footer */
 footer {
-    background-color: #343a40; /* Fondo del pie de página */
-    color: #fff; /* Color del texto del pie de página */
+    background-color: var(--color-terciario); /* Oscuro */
+    color: var(--color-texto-inverso);
     padding: 20px 0;
     text-align: center;
+    margin-top: auto; /* Empuja el footer al final de la página */
+    width: 100%;
 }
 
-footer h4 {
-    color: #b39064; /* Official government color */
+footer img {
+    margin-bottom: 10px;
 }
 
 footer ul {
-    list-style: none;
     padding: 0;
+    list-style: none;
+}
+
+footer ul li {
+    margin: 5px 0;
 }
 
 footer ul a {
+    color: var(--color-secundario);
     text-decoration: none;
-    color: #b39064; /* Official government color */
     transition: color 0.3s;
 }
 
 footer ul a:hover {
-    text-decoration: underline;
-    color: #fff;
+    color: var(--color-primario);
+}
+
+footer p, footer small {
+    margin: 0;
+}
+
+/* Botones */
+.btn-primary {
+    background-color: var(--color-primario);
+    border: none;
+    color: var(--color-texto-inverso);
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: var(--color-secundario);
+    transform: scale(1.05);
+}
+
+.btn-secondary {
+    background-color: var(--color-terciario);
+    border: none;
+    color: var(--color-texto-inverso);
+}
+
+.btn-secondary:hover {
+    background-color: var(--color-secundario);
+}
+
+/* Iconos */
+.icon {
+    color: var(--color-secundario); /* Dorado */
+    transition: color 0.3s, transform 0.2s;
+}
+
+.icon:hover {
+    color: var(--color-primario);
+    transform: scale(1.2);
 }
 
 /* Hero Section */
-.hero {
-    background-color: #343a40; /* Fondo sólido */
-    color: #fff;
-    height: 60vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.hero-section {
+    background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('assets/images/hero-bg-optimized.jpg') center/cover no-repeat;
+    color: var(--color-texto-inverso);
     text-align: center;
-    padding: 0 20px;
+    padding: 80px 20px;
+    border-radius: 10px;
 }
 
-.hero h1 {
+.hero-section h1 {
     font-size: 3rem;
-    margin-bottom: 20px;
-}
-
-.hero p {
-    font-size: 1.5rem;
-}
-
-.btn-hero {
-    font-size: 1.2rem;
-    padding: 10px 20px;
-    margin: 5px; /* Espaciado entre botones */
-}
-
-/* Info Section */
-.info-section {
-    padding: 60px 20px;
-    background-color: #fff;
-}
-
-.info-section .icon {
-    font-size: 3rem;
-    color: #b39064;
-    margin-bottom: 20px;
-}
-
-.info-section .card-title {
-    font-size: 1.5rem;
-}
-
-.info-section .card-text {
-    font-size: 1rem;
-}
-
-/* Objectives Section */
-.objectives-section {
-    padding: 60px 20px;
-    background-color: #f1f1f1;
-}
-
-.objectives-section .icon {
-    font-size: 3rem;
-    color: #b39064;
-    margin-bottom: 20px;
-}
-
-.objectives-section .card-title {
-    font-size: 1.5rem;
-}
-
-.objectives-section .card-text {
-    font-size: 1rem;
-}
-
-/* Módulo de Ayuda */
-.help-module h2 {
-    color: #b39064;
-    margin-bottom: 20px;
-}
-
-.accordion-button {
-    background-color: #f8f9fa; /* Fondo del acordeón */
-    color: #343a40; /* Texto */
     font-weight: bold;
-    transition: background-color 0.3s, color 0.3s;
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
 }
 
-.accordion-button:not(.collapsed) {
-    color: #fff; /* Texto activo */
-    background-color: #b39064; /* Fondo activo */
-}
-
-.accordion-button:hover {
-    color: #fff;
-    background-color: #9f7c52;
-}
-
-.accordion-item {
-    border: none;
-    border-bottom: 1px solid #ddd;
-}
-
-.accordion-body {
-    background-color: #fff;
-    color: #333;
-}
-
-.video-help .ratio {
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    overflow: hidden;
-    margin-bottom: 15px;
-}
-
-.video-help p {
-    font-size: 1rem;
+.hero-section p {
+    font-size: 1.5rem;
     margin-top: 10px;
-    color: #343a40;
-    font-weight: bold;
-    text-align: center;
 }
 
-/* Form Styles */
+/* Formularios */
 form .form-label {
     font-weight: bold;
-    color: #343a40;
+    color: var(--color-terciario);
 }
 
 form .form-control {
@@ -183,46 +153,52 @@ form .form-control {
 }
 
 form .form-control:focus {
-    border-color: #b39064;
-    box-shadow: 0 0 5px rgba(179, 144, 100, 0.5);
+    border-color: var(--color-secundario);
+    box-shadow: 0 0 5px rgba(188, 149, 92, 0.5);
 }
 
-form .error {
-    color: red;
-    font-size: 0.9rem;
-}
-
-form .mensaje {
-    margin-top: 20px;
-    font-size: 1rem;
-    color: green;
-}
-
-/* Buttons */
-.btn-primary {
-    background-color: #b39064;
+/* Cards */
+.card {
     border: none;
+    transition: transform 0.3s, box-shadow 0.3s;
 }
 
-.btn-primary:hover {
-    background-color: #9f7c52;
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
-.btn-secondary {
-    background-color: #343a40;
-    border: none;
+/* Tablas */
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
-.btn-secondary:hover {
-    background-color: #2c2f33;
+.table-bordered {
+    border: 1px solid #dee2e6;
 }
 
-/* AOS Animations */
-[data-aos] {
-    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+.table thead th {
+    background-color: var(--color-terciario);
+    color: var(--color-texto-inverso);
+    text-align: center;
 }
 
-/* Custom Scrollbar */
+.table tbody td {
+    text-align: center;
+}
+
+/* Enlaces */
+a {
+    color: var(--color-secundario);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--color-primario);
+    text-decoration: underline;
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
     width: 10px;
 }
@@ -232,33 +208,25 @@ form .mensaje {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #b39064;
+    background: var(--color-secundario);
     border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #9f7c52;
+    background: var(--color-primario);
 }
 
-/* Media Queries */
+/* Animaciones con AOS */
+[data-aos] {
+    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+}
+
+/* Footer Responsive */
 @media (max-width: 768px) {
-    .hero h1 {
-        font-size: 2.5rem;
+    footer {
+        text-align: center;
     }
-
-    .hero p {
-        font-size: 1.2rem;
-    }
-
-    .info-section, .objectives-section {
-        padding: 40px 10px;
-    }
-
-    .help-module h2 {
-        font-size: 1.5rem;
-    }
-
-    .video-help p {
-        font-size: 0.9rem;
+    footer ul {
+        padding: 0;
     }
 }

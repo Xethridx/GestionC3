@@ -1,28 +1,40 @@
 <?php
-require_once 'conexion.php';
+session_start();
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $correo = $_POST['correo'];
+// Mensajes de éxito o error
+$success = $_SESSION['success'] ?? null;
+$error = $_SESSION['error'] ?? null;
+unset($_SESSION['success'], $_SESSION['error']);
 
-    if (!empty($correo)) {
-        // Verificar si el correo existe en la base de datos
-        $stmt = $pdo->prepare("SELECT id_usuario FROM usuarios WHERE correo = :correo");
-        $stmt->bindParam(':correo', $correo, PDO::PARAM_STR);
-        $stmt->execute();
+// Procesar solicitud de recuperación de contraseña
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    include 'conexion.php';
 
-        if ($stmt->rowCount() > 0) {
-            // Registro para que el administrador resetee la contraseña
-            $stmt = $pdo->prepare("INSERT INTO solicitudes_reseteo (correo, estado) VALUES (:correo, 'pendiente')");
-            $stmt->bindParam(':correo', $correo, PDO::PARAM_STR);
-            $stmt->execute();
+    $email = filter_var($_POST['correo'], FILTER_VALIDATE_EMAIL);
 
-            $mensaje = "Solicitud enviada correctamente. Espere a que el administrador procese su petición.";
-        } else {
-            $error = "El correo ingresado no está registrado en el sistema.";
+    if ($email) {
+        try {
+            // Verificar si el correo existe en la base de datos
+            $sql = "SELECT * FROM usuarios WHERE Correo = ?";
+            $stmt = $conn->prepare($sql);
+            $stmt->execute([$email]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($user) {
+                // Simulación del envío de correo
+                $_SESSION['success'] = "Se ha enviado un correo con las instrucciones para restablecer tu contraseña.";
+            } else {
+                $_SESSION['error'] = "El correo proporcionado no está registrado.";
+            }
+        } catch (PDOException $e) {
+            $_SESSION['error'] = "Error al procesar la solicitud: " . $e->getMessage();
         }
     } else {
-        $error = "Por favor, ingrese un correo válido.";
+        $_SESSION['error'] = "Por favor, proporciona un correo válido.";
     }
+
+    header("Location: recuperar_contraseña.php");
+    exit();
 }
 ?>
 
@@ -32,38 +44,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recuperar Contraseña</title>
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="assets/styles/styles.css">
 </head>
 <body>
+    <?php include 'navbar.php'; ?>
+
+    <!-- Main Content -->
     <div class="container my-5">
+        <h1 class="text-center mb-4">Recuperar Contraseña</h1>
+        <p class="text-center">Ingresa tu correo electrónico para recibir las instrucciones de recuperación de tu contraseña.</p>
         <div class="row justify-content-center">
             <div class="col-md-6">
-                <div class="card shadow">
-                    <div class="card-body">
-                        <h3 class="text-center mb-4">Recuperar Contraseña</h3>
-                        <?php if (isset($mensaje)): ?>
-                            <div class="alert alert-success"><?php echo $mensaje; ?></div>
-                        <?php elseif (isset($error)): ?>
-                            <div class="alert alert-danger"><?php echo $error; ?></div>
-                        <?php endif; ?>
-                        <form method="POST">
-                            <div class="mb-3">
-                                <label for="correo" class="form-label">Correo Electrónico</label>
-                                <input type="email" class="form-control" id="correo" name="correo" placeholder="Ingresa tu correo electrónico" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100">Solicitar Reseteo</button>
-                        </form>
-                        <div class="mt-3 text-center">
-                            <a href="index.php" class="text-decoration-none">Regresar al inicio</a>
-                        </div>
+                <?php if ($success): ?>
+                    <div class="alert alert-success"><?php echo $success; ?></div>
+                <?php elseif ($error): ?>
+                    <div class="alert alert-danger"><?php echo $error; ?></div>
+                <?php endif; ?>
+                <form method="POST" action="recuperar_contraseña.php">
+                    <div class="mb-3">
+                        <label for="correo" class="form-label">Correo Electrónico</label>
+                        <input type="email" class="form-control" id="correo" name="correo" placeholder="Ingresa tu correo" required>
                     </div>
-                </div>
+                    <button type="submit" class="btn btn-primary w-100">Enviar</button>
+                </form>
             </div>
         </div>
     </div>
 
+    <?php include 'footer.php'; ?>
+
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

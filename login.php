@@ -1,41 +1,57 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 session_start();
 include 'conexion.php';
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $usuario = $_POST['usuario'];
+$error = null;
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $usuario = htmlspecialchars($_POST['usuario']);
     $password = $_POST['password'];
 
-    $query = "SELECT * FROM usuarios WHERE NUsuario = ?";
-    $stmt = $pdo->prepare($query);
-    $stmt->execute([$usuario]);
-    $row = $stmt->fetch();
+    try {
+        // Preparar consulta para obtener el usuario
+        $sql = "SELECT idUsuario, NUsuario, Contraseña, TipoUsuario FROM usuarios WHERE NUsuario = :usuario";
+        $stmt = $conn->prepare($sql);
+        $stmt->bindParam(':usuario', $usuario, PDO::PARAM_STR);
+        $stmt->execute();
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    if ($row && password_verify($password, $row['Contraseña'])) {
-        $_SESSION['usuario'] = $row['NUsuario'];
-        $_SESSION['nombre'] = $row['Nombre'];
-        $_SESSION['tipo_usuario'] = $row['TipoUsuario'];
+        // Verificar usuario y contraseña
+        if ($user && password_verify($password, $user['Contraseña'])) {
+            // Guardar información en la sesión
+            $_SESSION['id_usuario'] = $user['idUsuario']; // Guardar ID del usuario
+            $_SESSION['usuario'] = $user['NUsuario'];     // Guardar nombre de usuario
+            $_SESSION['rol'] = $user['TipoUsuario'];      // Guardar rol del usuario
 
-        switch ($row['TipoUsuario']) {
-            case 'administrador':
-                header("Location: panel_administrador.php");
-                break;
-            case 'gestor':
-                header("Location: panel_gestor.php");
-                break;
-            case 'enlace':
-                header("Location: panel_enlace.php");
-                break;
-            default:
-                $_SESSION['error'] = "Tipo de usuario no válido.";
-                header("Location: index.php");
+            // Redirigir según el rol
+            switch ($user['TipoUsuario']) {
+                case 'administrador':
+                    header("Location: panel_administrador.php");
+                    exit;
+                case 'gestor':
+                    header("Location: panel_gestor.php");
+                    exit;
+                case 'enlace':
+                    header("Location: panel_enlace.php");
+                    exit;
+                default:
+                    $_SESSION['error'] = "Tipo de usuario no reconocido.";
+                    header("Location: index.php");
+                    exit;
+            }
+        } else {
+            // Usuario o contraseña inválidos
+            $error = "Usuario o contraseña incorrectos.";
         }
-    } else {
-        $_SESSION['error'] = "Usuario o contraseña incorrectos.";
-        header("Location: index.php");
+    } catch (PDOException $e) {
+        $error = "Error al procesar el inicio de sesión: " . $e->getMessage();
     }
 }
+
+// Guardar error en la sesión y redirigir al index
+if ($error) {
+    $_SESSION['error'] = $error;
+}
+header("Location: index.php");
+exit();
+?>

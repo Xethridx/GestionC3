@@ -8,7 +8,6 @@ session_unset();
 // Destruir la sesión
 session_destroy();
 
-// Redirigir al index
-header("Location: index.php");
+// Redirigir al usuario a la página de inicio de sesión
+header("Location: login.php");
 exit();
-?>
