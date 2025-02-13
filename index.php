@@ -1,12 +1,15 @@
 <?php
 session_start();
-// Manejo de errores de sesión
-$error = $_SESSION['error'] ?? null;
-unset($_SESSION['error']);
+include 'conexion.php';
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-// Cerrar sesión automáticamente al acceder a index.php
+
+
+/* Cerrar sesión automáticamente al acceder a index.php
 session_unset();
-session_destroy();
+session_destroy();*/
 ?>
 
 <!DOCTYPE html>

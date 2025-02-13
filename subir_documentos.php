@@ -1,5 +1,8 @@
 <?php
 session_start();
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
 // Verificar si el usuario tiene sesión activa y el rol permitido
 if (!isset($_SESSION['usuario']) || !in_array($_SESSION['rol'], ['administrador', 'gestor', 'enlace'])) {
@@ -11,6 +14,7 @@ if (!isset($_SESSION['usuario']) || !in_array($_SESSION['rol'], ['administrador'
 if (!isset($_GET['elemento_id']) || !isset($_GET['numero_expediente'])) {
     die("Error: Elemento o expediente no especificado.");
 }
+
 
 $elemento_id = intval($_GET['elemento_id']);
 $numero_expediente = htmlspecialchars($_GET['numero_expediente']);
@@ -33,43 +37,70 @@ try {
 }
 
 // Procesar la carga de documentos
+$mensaje = "";
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['documento'])) {
     $nombre_documento = htmlspecialchars($_POST['nombre_documento']);
     $archivo = $_FILES['documento'];
 
     // Validar el archivo
     if ($archivo['error'] === UPLOAD_ERR_OK) {
-        $ruta_base = __DIR__ . "/documentos/$numero_expediente/" . $elemento['curp'];
-        $ruta_documento = "$ruta_base/$nombre_documento.pdf";
-
-        // Crear las carpetas necesarias si no existen
-        if (!is_dir($ruta_base)) {
-            mkdir($ruta_base, 0777, true);
-        }
-
-        // Mover el archivo subido a la ubicación deseada
-        if (move_uploaded_file($archivo['tmp_name'], $ruta_documento)) {
-            // Registrar el documento en la base de datos
-            try {
-                $stmt = $conn->prepare("INSERT INTO documentos (elemento_id, nombre_documento, ruta_documento, estado) 
-                                        VALUES (:elemento_id, :nombre_documento, :ruta_documento, 'subido')");
-                $stmt->bindParam(':elemento_id', $elemento_id, PDO::PARAM_INT);
-                $stmt->bindParam(':nombre_documento', $nombre_documento, PDO::PARAM_STR);
-                $stmt->bindParam(':ruta_documento', $ruta_documento, PDO::PARAM_STR);
-                $stmt->execute();
-
-                $mensaje = "Documento subido correctamente.";
-            } catch (PDOException $e) {
-                $mensaje = "Error al registrar el documento: " . $e->getMessage();
-            }
+        if ($archivo['size'] > 5242880) { // Limitar tamaño a 5 MB
+            $mensaje = "Error: El archivo excede el tamaño máximo permitido de 5 MB.";
+        } elseif (mime_content_type($archivo['tmp_name']) !== 'application/pdf') { // Validar tipo de archivo
+            $mensaje = "Error: Solo se permiten archivos en formato PDF.";
         } else {
-            $mensaje = "Error al mover el archivo.";
+            // Ajustar la ruta del documento
+            $curp = $elemento['curp'];
+            $ruta_base = __DIR__ . "/Expedientes/$numero_expediente/$curp";
+            $nombre_archivo = $curp . '_' . str_replace(' ', '_', $nombre_documento) . '.pdf';
+            $ruta_documento = "$ruta_base/$nombre_archivo";
+
+            // Crear las carpetas necesarias si no existen
+            if (!is_dir($ruta_base)) {
+                mkdir($ruta_base, 0777, true);
+            }
+
+            // Verificar si el documento ya existe
+            $stmtVerificar = $conn->prepare("
+                SELECT * FROM documentos 
+                WHERE elemento_id = :elemento_id AND nombre_documento = :nombre_documento
+            ");
+            $stmtVerificar->bindParam(':elemento_id', $elemento_id, PDO::PARAM_INT);
+            $stmtVerificar->bindParam(':nombre_documento', $nombre_documento, PDO::PARAM_STR);
+            $stmtVerificar->execute();
+
+            if ($stmtVerificar->rowCount() > 0) {
+                $mensaje = "Error: El documento '$nombre_documento' ya está registrado para este elemento.";
+            } else {
+                // Mover el archivo subido a la ubicación deseada
+                if (move_uploaded_file($archivo['tmp_name'], $ruta_documento)) {
+                    // Registrar el documento en la base de datos
+                    try {
+                        $stmtInsertar = $conn->prepare("
+                            INSERT INTO documentos (elemento_id, nombre_documento, ruta_documento, estado) 
+                            VALUES (:elemento_id, :nombre_documento, :ruta_documento, 'subido')
+                        ");
+                        $stmtInsertar->bindParam(':elemento_id', $elemento_id, PDO::PARAM_INT);
+                        $stmtInsertar->bindParam(':nombre_documento', $nombre_documento, PDO::PARAM_STR);
+                        $stmtInsertar->bindParam(':ruta_documento', $ruta_documento, PDO::PARAM_STR);
+                        $stmtInsertar->execute();
+
+                        $mensaje = "Documento subido correctamente.";
+                    } catch (PDOException $e) {
+                        $mensaje = "Error al registrar el documento: " . $e->getMessage();
+                    }
+                } else {
+                    $mensaje = "Error al mover el archivo.";
+                }
+            }
         }
     } else {
         $mensaje = "Error en el archivo subido.";
     }
 }
 ?>
+
+
 
 <!DOCTYPE html>
 <html lang="es">
@@ -102,19 +133,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['documento'])) {
         <!-- Formulario para Subir Documentos -->
         <form action="subir_documentos.php?elemento_id=<?php echo $elemento_id; ?>&numero_expediente=<?php echo $numero_expediente; ?>" 
               method="POST" enctype="multipart/form-data" class="mt-4">
-            <div class="mb-3">
-                <label for="nombre_documento" class="form-label">Nombre del Documento</label>
-                <select id="nombre_documento" name="nombre_documento" class="form-select" required>
-                    <option value="" selected disabled>Selecciona un documento...</option>
-                    <option value="Historia de vida firmado">Historia de vida firmado</option>
-                    <option value="Acta de nacimiento formato nuevo">Acta de nacimiento formato nuevo</option>
-                    <!-- Añadir más documentos según sea necesario -->
-                </select>
-            </div>
-            <div class="mb-3">
-                <label for="documento" class="form-label">Archivo PDF</label>
-                <input type="file" id="documento" name="documento" class="form-control" accept="application/pdf" required>
-            </div>
+<div class="mb-3">
+    <label for="nombre_documento" class="form-label">Nombre del Documento</label>
+    <select id="nombre_documento" name="nombre_documento" class="form-select" required>
+        <option value="" selected disabled>Selecciona un documento...</option>
+        <option value="Historia de vida firmado">Historia de vida firmado</option>
+        <option value="Acta de nacimiento formato nuevo">Acta de nacimiento formato nuevo</option>
+        <option value="CURP actualizada">CURP actualizada</option>
+        <option value="Comprobante de domicilio">Comprobante de domicilio</option>
+        <!-- Añadir más documentos según sea necesario -->
+    </select>
+</div>
+<div class="mb-3">
+    <label for="documento" class="form-label">Archivo PDF</label>
+    <input type="file" id="documento" name="documento" class="form-control" accept="application/pdf" required>
+</div>
+
             <button type="submit" class="btn btn-primary">Subir Documento</button>
         </form>
 

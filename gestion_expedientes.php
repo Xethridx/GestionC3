@@ -1,13 +1,9 @@
 <?php
 session_start();
 include 'conexion.php';
+require 'auth.php';
 
-// Validar si el usuario está autenticado
-if (!isset($_SESSION['id_usuario']) || !isset($_SESSION['rol'])) {
-    die("Error: No se ha encontrado un usuario válido en la sesión.");
-}
-
-// Variable para mensajes de éxito o error
+// Mensajes de éxito o error
 $mensaje = "";
 
 // Ruta base para guardar los expedientes
@@ -21,26 +17,35 @@ if (!file_exists(BASE_PATH)) {
 // Crear un nuevo expediente
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['crear_expediente'])) {
     $folio_expediente = trim($_POST['numero_expediente']);
-    $id_usuario = $_SESSION['id_usuario'];
-    $id_corporacion = 1; // Puedes ajustar según tu lógica
+    $comentarios = trim($_POST['comentarios']);
 
     if (empty($folio_expediente)) {
         $mensaje = "Error: El número de expediente no puede estar vacío.";
     } else {
         try {
-            $stmt = $conn->prepare("INSERT INTO expedientes (FolioExpediente, idUsuario, idCorporacion) 
-                                    VALUES (:FolioExpediente, :idUsuario, :idCorporacion)");
-            $stmt->bindParam(':FolioExpediente', $folio_expediente, PDO::PARAM_STR);
-            $stmt->bindParam(':idUsuario', $id_usuario, PDO::PARAM_INT);
-            $stmt->bindParam(':idCorporacion', $id_corporacion, PDO::PARAM_INT);
-            $stmt->execute();
+            // Verificar duplicados
+            $stmtVerificar = $conn->prepare("SELECT * FROM expedientes WHERE FolioExpediente = :FolioExpediente");
+            $stmtVerificar->bindParam(':FolioExpediente', $folio_expediente, PDO::PARAM_STR);
+            $stmtVerificar->execute();
 
-            $expediente_path = BASE_PATH . '/' . $folio_expediente;
-            if (!file_exists($expediente_path)) {
-                mkdir($expediente_path, 0777, true);
+            if ($stmtVerificar->rowCount() > 0) {
+                $mensaje = "Error: Ya existe un expediente con el número $folio_expediente.";
+            } else {
+                // Insertar el expediente
+                $stmt = $conn->prepare("INSERT INTO expedientes (FolioExpediente, Estado, Comentarios) 
+                                        VALUES (:FolioExpediente, 'Abierto', :Comentarios)");
+                $stmt->bindParam(':FolioExpediente', $folio_expediente, PDO::PARAM_STR);
+                $stmt->bindParam(':Comentarios', $comentarios, PDO::PARAM_STR);
+                $stmt->execute();
+
+                // Crear la carpeta para el expediente
+                $expediente_path = BASE_PATH . '/' . $folio_expediente;
+                if (!file_exists($expediente_path)) {
+                    mkdir($expediente_path, 0777, true);
+                }
+
+                $mensaje = "Expediente creado correctamente.";
             }
-
-            $mensaje = "Expediente creado correctamente.";
         } catch (PDOException $e) {
             $mensaje = "Error al crear expediente: " . $e->getMessage();
         }
@@ -79,6 +84,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_expediente']
     }
 }
 
+// Editar un expediente
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_expediente'])) {
+    $expediente_id = intval($_POST['expediente_id']);
+    $estado = $_POST['estado'];
+    $comentarios = trim($_POST['comentarios']);
+
+    try {
+        $stmt = $conn->prepare("UPDATE expedientes SET Estado = :Estado, Comentarios = :Comentarios WHERE idExpediente = :id");
+        $stmt->bindParam(':Estado', $estado, PDO::PARAM_STR);
+        $stmt->bindParam(':Comentarios', $comentarios, PDO::PARAM_STR);
+        $stmt->bindParam(':id', $expediente_id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        $mensaje = "Expediente actualizado correctamente.";
+    } catch (PDOException $e) {
+        $mensaje = "Error al actualizar expediente: " . $e->getMessage();
+    }
+}
+
 // Consultar todos los expedientes
 try {
     $stmt = $conn->query("SELECT * FROM expedientes ORDER BY FechaCreacion DESC");
@@ -95,36 +119,39 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Expedientes</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/styles/styles.css">
 </head>
 <body>
     <?php include 'navbar.php'; ?>
-
     <div class="container my-5">
-        <h1 class="mb-4">Gestión de Expedientes</h1>
+        <h1 class="mb-4 text-center">Gestión de Expedientes</h1>
 
         <?php if (!empty($mensaje)): ?>
-            <div class="alert alert-info"><?php echo $mensaje; ?></div>
+            <div class="alert alert-info text-center"><?php echo $mensaje; ?></div>
         <?php endif; ?>
 
         <form method="POST" class="row g-3 mb-5">
-            <div class="col-md-8">
+            <div class="col-md-6">
                 <label for="numero_expediente" class="form-label">Número de Expediente</label>
                 <input type="text" class="form-control" id="numero_expediente" name="numero_expediente" placeholder="Ej. EX12345" required>
             </div>
-            <div class="col-md-4 align-self-end">
+            <div class="col-md-6">
+                <label for="comentarios" class="form-label">Comentarios</label>
+                <input type="text" class="form-control" id="comentarios" name="comentarios" placeholder="Comentarios opcionales">
+            </div>
+            <div class="col-md-12 text-center">
                 <button type="submit" name="crear_expediente" class="btn btn-primary">Crear Expediente</button>
             </div>
         </form>
 
-        <h2 class="mb-4">Listado de Expedientes</h2>
+        <h2 class="mb-4 text-center">Listado de Expedientes</h2>
         <div class="table-responsive">
-            <table class="table table-striped table-bordered">
-                <thead>
+            <table class="table table-striped table-hover table-bordered">
+                <thead class="table-dark">
                     <tr>
                         <th>#</th>
                         <th>Folio</th>
                         <th>Estado</th>
+                        <th>Comentarios</th>
                         <th>Fecha Creación</th>
                         <th>Acciones</th>
                     </tr>
@@ -136,19 +163,30 @@ try {
                                 <td><?php echo htmlspecialchars($expediente['idExpediente']); ?></td>
                                 <td><?php echo htmlspecialchars($expediente['FolioExpediente']); ?></td>
                                 <td><?php echo htmlspecialchars($expediente['Estado']); ?></td>
+                                <td><?php echo htmlspecialchars($expediente['Comentarios']); ?></td>
                                 <td><?php echo htmlspecialchars($expediente['FechaCreacion']); ?></td>
                                 <td>
                                     <form method="POST" class="d-inline">
                                         <input type="hidden" name="expediente_id" value="<?php echo $expediente['idExpediente']; ?>">
-                                        <button type="submit" name="eliminar_expediente" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro de eliminar este expediente?')">Eliminar</button>
+                                        <select name="estado" class="form-select form-select-sm d-inline w-auto">
+                                            <option value="Abierto" <?php echo $expediente['Estado'] === 'Abierto' ? 'selected' : ''; ?>>Abierto</option>
+                                            <option value="En Revisión" <?php echo $expediente['Estado'] === 'En Revisión' ? 'selected' : ''; ?>>En Revisión</option>
+                                            <option value="Cerrado" <?php echo $expediente['Estado'] === 'Cerrado' ? 'selected' : ''; ?>>Cerrado</option>
+                                        </select>
+                                        <input type="text" name="comentarios" class="form-control form-control-sm d-inline w-auto" value="<?php echo htmlspecialchars($expediente['Comentarios']); ?>">
+                                        <button type="submit" name="editar_expediente" class="btn btn-success btn-sm">Actualizar</button>
                                     </form>
                                     <a href="programacion.php?idExpediente=<?php echo $expediente['idExpediente']; ?>" class="btn btn-info btn-sm">Administrar</a>
+                                    <form method="POST" class="d-inline">
+                                        <input type="hidden" name="expediente_id" value="<?php echo $expediente['idExpediente']; ?>">
+                                        <button type="submit" name="eliminar_expediente" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro de eliminar este expediente?')">Eliminar</button>
+                                    </form>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="5" class="text-center">No hay expedientes registrados.</td>
+                            <td colspan="6" class="text-center">No hay expedientes registrados.</td>
                         </tr>
                     <?php endif; ?>
                 </tbody>
@@ -157,7 +195,6 @@ try {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-        <!-- Footer -->
-    <?php include 'footer.php'; ?>
+       <?php include 'footer.php'; ?>
 </body>
 </html>

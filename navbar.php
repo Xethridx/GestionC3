@@ -1,6 +1,7 @@
 <?php
-// Iniciar sesión
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Obtener rol y usuario si está autenticado
 $usuario = $_SESSION['usuario'] ?? null;
@@ -32,8 +33,8 @@ $rol = $_SESSION['rol'] ?? null;
                         <?php if ($rol === 'administrador'): ?>
                         <li class="nav-item"><a class="nav-link" href="panel_administrador.php">Panel administrador</a></li>
                             <li class="nav-item"><a class="nav-link" href="gestion_usuarios.php">Gestión de Usuarios</a></li>
+                             <li class="nav-item"><a class="nav-link" href="gestion_expedientes.php">Gestion de Expedientes</a></li>
                             <li class="nav-item"><a class="nav-link" href="tickets_soporte.php">Tickets de Soporte</a></li>
-                            <li class="nav-item"><a class="nav-link" href="cargar_documentos.php">Carga de Documentos</a></li>
                             <li class="nav-item"><a class="nav-link" href="validacion_documentos.php">Validación de Documentos</a></li>
                             <li class="nav-item"><a class="nav-link" href="padron_evaluados.php">Padrón de Evaluados</a></li>
                         <?php elseif ($rol === 'gestor'): ?>
@@ -44,7 +45,7 @@ $rol = $_SESSION['rol'] ?? null;
                         <?php elseif ($rol === 'enlace'): ?>
                             <li class="nav-item"><a class="nav-link" href="index.php">Inicio</a></li>
                              <li class="nav-item"><a class="nav-link" href="panel_enlace.php">Panel Enlace</a></li>
-                            <li class="nav-item"><a class="nav-link" href="cargar_documentos.php">Carga de Documentos</a></li>
+                           <li class="nav-item"><a class="nav-link" href="gestion_expedientes.php">Gestion de Expedientes</a></li>
                             <li class="nav-item"><a class="nav-link" href="padron_evaluados.php">Padrón de Evaluados</a></li>
                         <?php endif; ?>
                         <li class="nav-item"><a class="nav-link" href="ayuda.php">Ayuda</a></li>

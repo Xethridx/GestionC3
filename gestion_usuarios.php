@@ -2,14 +2,13 @@
 // Iniciar sesión
 session_start();
 
-// Verificar si el usuario ha iniciado sesión como administrador
-if (!isset($_SESSION['usuario']) || $_SESSION['rol'] !== 'administrador') {
-    header("Location: login.php");
-    exit();
-}
+// Incluir archivo de conexión a la base de datos y funciones de usuario
+require 'conexion.php';
+require 'auth.php';
 
-// Nombre del administrador
+// Nombre del administrador para mostrar en la interfaz
 $nombre_admin = htmlspecialchars($_SESSION['usuario']);
+
 ?>
 
 <!DOCTYPE html>
@@ -18,17 +17,12 @@ $nombre_admin = htmlspecialchars($_SESSION['usuario']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Usuarios</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="assets/styles/styles.css">
 </head>
 <body>
-    <!-- Navbar -->
-<?php include 'navbar.php'; ?>
+    <?php include 'navbar.php'; ?>
 
-
-    <!-- Hero Section -->
     <div class="bg-light py-4">
         <div class="container text-center">
             <h1 class="fw-bold">Gestión de Usuarios</h1>
@@ -36,9 +30,7 @@ $nombre_admin = htmlspecialchars($_SESSION['usuario']);
         </div>
     </div>
 
-    <!-- Main Content -->
     <div class="container my-5">
-        <!-- User Management Tabs -->
         <ul class="nav nav-tabs" id="userManagementTabs" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="listUsers-tab" data-bs-toggle="tab" data-bs-target="#listUsers" type="button" role="tab" aria-controls="listUsers" aria-selected="true">Listar Usuarios</button>
@@ -52,7 +44,6 @@ $nombre_admin = htmlspecialchars($_SESSION['usuario']);
         </ul>
 
         <div class="tab-content" id="userManagementTabsContent">
-            <!-- List Users -->
             <div class="tab-pane fade show active" id="listUsers" role="tabpanel" aria-labelledby="listUsers-tab">
                 <h3 class="mt-4">Usuarios Registrados</h3>
                 <div class="table-responsive mt-3">
@@ -67,40 +58,31 @@ $nombre_admin = htmlspecialchars($_SESSION['usuario']);
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Aquí se llenarán dinámicamente los usuarios desde el backend -->
                             <tr>
-                                <td>Juan Pérez</td>
-                                <td>jperez</td>
-                                <td>Gestor</td>
-                                <td>jperez@correo.com</td>
-                                <td>
-                                    <button class="btn btn-warning btn-sm">Editar</button>
-                                    <button class="btn btn-danger btn-sm">Eliminar</button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>Ana López</td>
-                                <td>alopez</td>
-                                <td>Enlace</td>
-                                <td>alopez@correo.com</td>
-                                <td>
-                                    <button class="btn btn-warning btn-sm">Editar</button>
-                                    <button class="btn btn-danger btn-sm">Eliminar</button>
-                                </td>
+                                <td colspan="5" class="text-center">Cargando usuarios...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Add User -->
             <div class="tab-pane fade" id="addUser" role="tabpanel" aria-labelledby="addUser-tab">
                 <h3 class="mt-4">Agregar Nuevo Usuario</h3>
+                <div class="alert-container">
+                    </div>
                 <form class="mt-3">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="nombre" class="form-label">Nombre Completo</label>
                             <input type="text" class="form-control" id="nombre" name="nombre" required>
+                        </div>
+                         <div class="col-md-6 mb-3">
+                            <label for="apellidoP" class="form-label">Apellido Paterno</label>
+                            <input type="text" class="form-control" id="apellidoP" name="apellidoP" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="apellidoM" class="form-label">Apellido Materno</label>
+                            <input type="text" class="form-control" id="apellidoM" name="apellidoM">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="usuario" class="form-label">Usuario</label>
@@ -113,9 +95,11 @@ $nombre_admin = htmlspecialchars($_SESSION['usuario']);
                         <div class="col-md-6 mb-3">
                             <label for="rol" class="form-label">Rol</label>
                             <select class="form-select" id="rol" name="rol" required>
+                                <option value="">Seleccionar Rol</option>
                                 <option value="administrador">Administrador</option>
                                 <option value="gestor">Gestor</option>
                                 <option value="enlace">Enlace</option>
+                                <option value="administrativo">Administrativo</option>
                             </select>
                         </div>
                     </div>
@@ -123,7 +107,6 @@ $nombre_admin = htmlspecialchars($_SESSION['usuario']);
                 </form>
             </div>
 
-            <!-- Audit Users -->
             <div class="tab-pane fade" id="auditUsers" role="tabpanel" aria-labelledby="auditUsers-tab">
                 <h3 class="mt-4">Auditoría de Usuarios</h3>
                 <div class="table-responsive mt-3">
@@ -137,18 +120,8 @@ $nombre_admin = htmlspecialchars($_SESSION['usuario']);
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Aquí se llenarán dinámicamente los logs desde el backend -->
                             <tr>
-                                <td>jperez</td>
-                                <td>Creación de Usuario</td>
-                                <td>2024-12-10 14:00:00</td>
-                                <td>Nuevo usuario agregado: alopez</td>
-                            </tr>
-                            <tr>
-                                <td>alopez</td>
-                                <td>Cambio de Contraseña</td>
-                                <td>2024-12-11 09:30:00</td>
-                                <td>Actualización de contraseña</td>
+                                <td colspan="4" class="text-center">Cargando registros de auditoría...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -157,7 +130,7 @@ $nombre_admin = htmlspecialchars($_SESSION['usuario']);
         </div>
     </div>
 
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/gestion_usuarios.js"></script>
 </body>
 </html>

@@ -1,24 +1,19 @@
 <?php
 session_start();
-// Verificar si el usuario ha iniciado sesión y tiene el rol permitido (administrador o gestor)
+include 'conexion.php';
+
+// Verificar permisos
 if (!isset($_SESSION['usuario']) || !in_array($_SESSION['rol'], ['administrador', 'gestor'])) {
     header("Location: login.php");
     exit();
 }
 
-// Incluir conexión a la base de datos
-include 'conexion.php';
-
-// Obtener el listado de documentos para validar
+// Obtener Expedientes
 try {
-    $sql = "SELECT de.idDocumento, de.NombreArchivo, de.EstadoRevision, e.FolioExpediente, e.Comentarios 
-            FROM documentos_expediente de
-            JOIN expedientes e ON de.idElemento = e.idExpediente
-            ORDER BY de.FechaCarga DESC";
-    $stmt = $conn->query($sql);
-    $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $stmtExpedientes = $conn->query("SELECT idExpediente, FolioExpediente, FechaCreacion FROM expedientes ORDER BY FechaCreacion DESC");
+    $expedientes = $stmtExpedientes->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    die("Error al obtener los documentos: " . $e->getMessage());
+    die("Error al obtener expedientes: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
@@ -26,67 +21,95 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Validación de Documentos</title>
-    <!-- Bootstrap CSS -->
+    <title>Revisar Documentos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="assets/styles/styles.css">
 </head>
 <body>
-    <!-- Navbar -->
-<?php include 'navbar.php'; ?>
+    <?php include 'navbar.php'; ?>
 
-
-    <!-- Main Content -->
     <div class="container my-5">
-        <h3>Documentos para Validar</h3>
+        <h1 class="text-center mb-4">Revisar Documentos</h1>
+
+        <!-- Tabla de Expedientes -->
+        <h3 class="mb-3">Listado de Expedientes</h3>
         <div class="table-responsive">
             <table class="table table-striped table-bordered">
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Número de Expediente</th>
-                        <th>Documento</th>
-                        <th>Estado</th>
+                        <th>Folio</th>
+                        <th>Fecha de Creación</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if ($result): ?>
-                        <?php foreach ($result as $row): ?>
-                            <tr>
-                                <td><?php echo $row['idDocumento']; ?></td>
-                                <td><?php echo $row['FolioExpediente']; ?></td>
-                                <td><a href="<?php echo $row['NombreArchivo']; ?>" target="_blank"><?php echo $row['NombreArchivo']; ?></a></td>
-                                <td>
-                                    <span class="badge bg-<?php echo $row['EstadoRevision'] === 'Validado' ? 'success' : 'danger'; ?>">
-                                        <?php echo $row['EstadoRevision']; ?>
-                                    </span>
-                                </td>
-                                <td>
-                                    <form action="actualizar_documento.php" method="POST" class="d-inline">
-                                        <input type="hidden" name="documentoId" value="<?php echo $row['idDocumento']; ?>">
-                                        <input type="hidden" name="estado" value="Validado">
-                                        <button type="submit" class="btn btn-success btn-sm">Validar</button>
-                                    </form>
-                                    <form action="actualizar_documento.php" method="POST" class="d-inline">
-                                        <input type="hidden" name="documentoId" value="<?php echo $row['idDocumento']; ?>">
-                                        <input type="hidden" name="estado" value="Observaciones">
-                                        <button type="submit" class="btn btn-danger btn-sm">Observación</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    <?php else: ?>
+                    <?php foreach ($expedientes as $index => $expediente): ?>
                         <tr>
-                            <td colspan="5" class="text-center">No hay documentos pendientes de validación.</td>
+                            <td><?php echo $index + 1; ?></td>
+                            <td><?php echo htmlspecialchars($expediente['FolioExpediente']); ?></td>
+                            <td><?php echo htmlspecialchars($expediente['FechaCreacion']); ?></td>
+                            <td>
+                                <button class="btn btn-primary btn-sm load-users" 
+                                        data-expediente-id="<?php echo $expediente['idExpediente']; ?>" 
+                                        data-folio-expediente="<?php echo htmlspecialchars($expediente['FolioExpediente']); ?>">
+                                    Ver Usuarios
+                                </button>
+                            </td>
                         </tr>
-                    <?php endif; ?>
+                    <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
+
+        <!-- Tabla de Usuarios -->
+        <div class="mt-5" id="usuarios-container" style="display: none;">
+            <h3>Usuarios del Expediente: <span id="folio-actual"></span></h3>
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            <th>CURP</th>
+                            <th>Nombre Completo</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usuarios-tbody"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
+    <script>
+        document.querySelectorAll('.load-users').forEach(button => {
+            button.addEventListener('click', function () {
+                const expedienteId = this.dataset.expedienteId;
+                const folioExpediente = this.dataset.folioExpediente;
+
+                fetch(`api_get_usuarios.php?expedienteId=${expedienteId}`)
+                    .then(response => response.json())
+                    .then(users => {
+                        const tbody = document.getElementById('usuarios-tbody');
+                        tbody.innerHTML = '';
+                        users.forEach(user => {
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td>${user.CURP}</td>
+                                    <td>${user.NombreCompleto}</td>
+                                    <td>
+                                        <a href="ver_documentos.php?curp=${user.CURP}&expedienteId=${expedienteId}" class="btn btn-info btn-sm">Ver Documentos</a>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+
+                        document.getElementById('folio-actual').textContent = folioExpediente;
+                        document.getElementById('usuarios-container').style.display = 'block';
+                    });
+            });
+        });
+    </script>
+
     <?php include 'footer.php'; ?>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -65,7 +65,7 @@ $nombre_admin = htmlspecialchars($_SESSION['usuario']);
     </div>
 </div>
 
-            <!-- Card: Programación -->
+            <!-- Card: Programación
             <div class="col-md-4">
                 <div class="card text-center shadow-sm">
                     <div class="card-body">
@@ -76,7 +76,7 @@ $nombre_admin = htmlspecialchars($_SESSION['usuario']);
                     </div>
                 </div>
             </div>
-            <!-- Card: Carga de Documentos -->
+            <!-- Card: Carga de Documentos
             <div class="col-md-4">
                 <div class="card text-center shadow-sm">
                     <div class="card-body">
@@ -85,8 +85,7 @@ $nombre_admin = htmlspecialchars($_SESSION['usuario']);
                         <p class="card-text">Sube documentos al sistema.</p>
                         <a href="carga_documentos.php" class="btn btn-warning">Acceder</a>
                     </div>
-                </div>
-            </div>
+                </div> -->
             <!-- Card: Validación de Documentos -->
             <div class="col-md-4">
                 <div class="card text-center shadow-sm">
