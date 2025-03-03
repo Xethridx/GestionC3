@@ -6,6 +6,8 @@
     --color-fondo: #f8f9fa; /* Fondo claro general */
     --color-texto: #333; /* Texto general */
     --color-texto-inverso: #ffffff; /* Texto sobre colores oscuros */
+    --color-navbar-footer: var(--color-terciario); /* Añade esta línea: Navbar usa el mismo color que el footer */
+
 }
 
 /* Fuente global */
@@ -27,7 +29,7 @@ main {
 
 /* Navbar */
 .navbar {
-    background-color: var(--color-navbar-footer); /* Color oscuro */
+    background-color: var(--color-terciario); /* Color oscuro */
     color: var(--color-texto-inverso); /* Texto blanco */
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }

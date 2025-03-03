@@ -1,13 +1,14 @@
 <?php
 session_start();
 include 'conexion.php';
+/*
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 
 
-/* Cerrar sesión automáticamente al acceder a index.php
+ Cerrar sesión automáticamente al acceder a index.php
 session_unset();
 session_destroy();*/
 ?>
