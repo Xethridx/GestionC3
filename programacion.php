@@ -5,8 +5,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// Validar permisos
-if (!isset($_SESSION['usuario']) || ($_SESSION['rol'] !== 'administrador' && $_SESSION['rol'] !== 'gestor')) {
+// Validar permisos: Administrador, Gestor y Enlace pueden acceder
+if (!isset($_SESSION['usuario']) || ($_SESSION['rol'] !== 'administrador' && $_SESSION['rol'] !== 'gestor' && $_SESSION['rol'] !== 'enlace')) {
     header("Location: login.php");
     exit();
 }
@@ -49,9 +49,9 @@ try {
     die("Error al cargar catálogos: " . $e->getMessage());
 }
 
-// Procesar edición de evaluado
+// Procesar edición de evaluado (SOLO PARA ADMINISTRADOR Y GESTOR)
 $mensaje = "";
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_evaluado'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_evaluado']) && ($_SESSION['rol'] === 'administrador' || $_SESSION['rol'] === 'gestor')) {
     $idSolicitud = intval($_POST['idSolicitud']);
     $idMotivoEvaluacion = intval($_POST['motivoEvaluacion']);
     $idCategoria = intval($_POST['categoria']);
@@ -83,8 +83,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_evaluado'])) {
     }
 }
 
-// Procesar eliminación de evaluado
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_evaluado'])) {
+// Procesar eliminación de evaluado (SOLO PARA ADMINISTRADOR Y GESTOR)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_evaluado']) && ($_SESSION['rol'] === 'administrador' || $_SESSION['rol'] === 'gestor')) {
     $idSolicitud = intval($_POST['idSolicitud']);
     try {
         $stmtEliminar = $conn->prepare("DELETE FROM programacion_evaluados WHERE idSolicitud = :idSolicitud");
@@ -97,8 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_evaluado']))
     }
 }
 
-// Agregar evaluado
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_evaluado'])) {
+// Agregar evaluado (SOLO PARA ADMINISTRADOR Y GESTOR)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_evaluado']) && ($_SESSION['rol'] === 'administrador' || $_SESSION['rol'] === 'gestor')) {
     $curp = trim($_POST['curp']);
     $nombre = trim($_POST['nombre']);
     $apellidoP = trim($_POST['apellidoP']);
@@ -111,8 +111,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_evaluado'])) 
     try {
         // Validar duplicados
         $stmtVerificar = $conn->prepare("
-            SELECT * 
-            FROM programacion_evaluados 
+            SELECT *
+            FROM programacion_evaluados
             WHERE CURP = :curp AND idExpediente = :idExpediente
         ");
         $stmtVerificar->bindParam(':curp', $curp, PDO::PARAM_STR);
@@ -124,8 +124,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_evaluado'])) 
         } else {
             // Insertar evaluado
             $stmtAgregar = $conn->prepare("
-                INSERT INTO programacion_evaluados 
-                (idExpediente, Nombre, ApellidoP, ApellidoM, CURP, idMotivoEvaluacion, idCategoria, idMunicipio, idCorporacion, EstadoDocumentacion) 
+                INSERT INTO programacion_evaluados
+                (idExpediente, Nombre, ApellidoP, ApellidoM, CURP, idMotivoEvaluacion, idCategoria, idMunicipio, idCorporacion, EstadoDocumentacion)
                 VALUES (:idExpediente, :nombre, :apellidoP, :apellidoM, :curp, :idMotivoEvaluacion, :idCategoria, :idMunicipio, :idCorporacion, 'Pendiente')
             ");
             $stmtAgregar->bindParam(':idExpediente', $idExpediente, PDO::PARAM_INT);
@@ -183,6 +183,7 @@ try {
             <div class="alert alert-info"><?php echo $mensaje; ?></div>
         <?php endif; ?>
 
+        <?php if($_SESSION['rol'] === 'administrador' || $_SESSION['rol'] === 'gestor'): ?>
         <h3 class="mb-4">Nuevo Evaluado</h3>
         <form method="POST" class="row g-3">
             <div class="col-md-3">
@@ -237,6 +238,8 @@ try {
                 <button type="submit" name="agregar_evaluado" class="btn btn-primary">Agregar Evaluado</button>
             </div>
         </form>
+        <?php endif; ?>
+
 
         <div class="mt-5">
         <h3 class="mt-5">Evaluados del Expediente</h3>
@@ -267,82 +270,95 @@ try {
                                 <td><?php echo htmlspecialchars($evaluado['NombreCorporacion']); ?></td>
                                 <td><?php echo htmlspecialchars($evaluado['EstadoDocumentacion']); ?></td>
                                 <td><?php echo htmlspecialchars($evaluado['Comentarios'] ?? ''); ?></td>
-                                <td>
-                                    <!-- Botón Cargar Documentos -->
-                                    <a href="carga_documentos.php?expediente=<?php echo urlencode($idExpediente); ?>&curp=<?php echo urlencode($evaluado['CURP']); ?>&tipoEvaluacion=<?php echo urlencode($evaluado['idMotivoEvaluacion']); ?>" 
-                                       class="btn btn-primary btn-sm">Cargar Documentos</a>
-                                    <!-- Botón Editar -->
-                                    <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#editarModal<?php echo $evaluado['idSolicitud']; ?>">Editar</button>
-                                    <!-- Botón Eliminar -->
-                                    <form method="POST" class="d-inline">
-                                        <input type="hidden" name="idSolicitud" value="<?php echo $evaluado['idSolicitud']; ?>">
-                                        <button type="submit" name="eliminar_evaluado" class="btn btn-danger btn-sm" onclick="return confirm('¿Está seguro de eliminar este evaluado?')">Eliminar</button>
-                                    </form>
-                                </td>
+ <td>
+    <div class="d-flex flex-column gap-1">
+        <?php if($_SESSION['rol'] === 'enlace'): ?>
+            <a href="carga_documentos.php?expediente=<?php echo urlencode($idExpediente); ?>&curp=<?php echo urlencode($evaluado['CURP']); ?>&tipoEvaluacion=<?php echo urlencode($evaluado['idMotivoEvaluacion']); ?>"
+               class="btn btn-primary btn-sm w-100 mb-1">Cargar Documentos</a>
+        <?php endif; ?>
+
+        <?php if($_SESSION['rol'] === 'administrador' || $_SESSION['rol'] === 'gestor'): ?>
+            <?php if($_SESSION['rol'] === 'administrador' || $_SESSION['rol'] === 'gestor'): ?>
+                <button class="btn btn-info btn-sm w-100 mb-1" data-bs-toggle="modal" data-bs-target="#editarModal<?php echo $evaluado['idSolicitud']; ?>">Editar</button>
+                <form method="POST" class="d-inline w-100 mb-1">
+                    <input type="hidden" name="idSolicitud" value="<?php echo $evaluado['idSolicitud']; ?>">
+                    <button type="submit" name="eliminar_evaluado" class="btn btn-danger btn-sm w-100" onclick="return confirm('¿Está seguro de eliminar este evaluado?')">Eliminar</button>
+                </form>
+            <?php endif; ?>
+        <?php endif; ?>
+
+        <?php if($_SESSION['rol'] === 'administrador'): ?>
+             <a href="carga_documentos.php?expediente=<?php echo urlencode($idExpediente); ?>&curp=<?php echo urlencode($evaluado['CURP']); ?>&tipoEvaluacion=<?php echo urlencode($evaluado['idMotivoEvaluacion']); ?>"
+               class="btn btn-warning btn-sm w-100">Cargar Documentos</a>
+        <?php endif; ?>
+    </div>
+</td>
                             </tr>
 
-  <!-- Modal para Editar -->
-<div class="modal fade" id="editarModal<?php echo $evaluado['idSolicitud']; ?>" tabindex="-1" aria-labelledby="editarModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <form method="POST">
-            <input type="hidden" name="idSolicitud" value="<?php echo $evaluado['idSolicitud']; ?>">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editarModalLabel">Editar Evaluado</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="motivoEvaluacion" class="form-label">Motivo de Evaluación</label>
-                        <select class="form-control" name="motivoEvaluacion" required>
-                            <?php foreach ($catalogoMotivos as $motivo): ?>
-                                <option value="<?php echo $motivo['idMotivo']; ?>" <?php echo $evaluado['idMotivoEvaluacion'] == $motivo['idMotivo'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($motivo['Motivo']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="categoria" class="form-label">Categoría</label>
-                        <select class="form-control" name="categoria" required>
-                            <?php foreach ($catalogoCategorias as $categoria): ?>
-                                <option value="<?php echo $categoria['idCategoria']; ?>" <?php echo $evaluado['idCategoria'] == $categoria['idCategoria'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($categoria['Categoria']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="municipio" class="form-label">Municipio</label>
-                        <select class="form-control" name="municipio" required>
-                            <?php foreach ($catalogoMunicipios as $municipio): ?>
-                                <option value="<?php echo $municipio['idMunicipio']; ?>" <?php echo $evaluado['idMunicipio'] == $municipio['idMunicipio'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($municipio['Municipio']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="estadoDocumentacion" class="form-label">Estado Documentación</label>
-                        <select class="form-control" name="estadoDocumentacion" required>
-                            <option value="Completo" <?php echo $evaluado['EstadoDocumentacion'] == 'Completo' ? 'selected' : ''; ?>>Completo</option>
-                            <option value="Pendiente" <?php echo $evaluado['EstadoDocumentacion'] == 'Pendiente' ? 'selected' : ''; ?>>Pendiente</option>
-                            <option value="Observaciones" <?php echo $evaluado['EstadoDocumentacion'] == 'Observaciones' ? 'selected' : ''; ?>>Observaciones</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="comentarios" class="form-label">Comentarios</label>
-                        <textarea class="form-control" name="comentarios" rows="3"><?php echo htmlspecialchars($evaluado['Comentarios'] ?? ''); ?></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="submit" name="editar_evaluado" class="btn btn-primary">Guardar Cambios</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
+                            <?php if($_SESSION['rol'] === 'administrador' || $_SESSION['rol'] === 'gestor'): ?>
+                            <div class="modal fade" id="editarModal<?php echo $evaluado['idSolicitud']; ?>" tabindex="-1" aria-labelledby="editarModalLabel" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <form method="POST">
+                                        <input type="hidden" name="idSolicitud" value="<?php echo $evaluado['idSolicitud']; ?>">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="editarModalLabel">Editar Evaluado</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <label for="motivoEvaluacion" class="form-label">Motivo de Evaluación</label>
+                                                    <select class="form-control" name="motivoEvaluacion" required>
+                                                        <?php foreach ($catalogoMotivos as $motivo): ?>
+                                                            <option value="<?php echo $motivo['idMotivo']; ?>" <?php echo $evaluado['idMotivoEvaluacion'] == $motivo['idMotivo'] ? 'selected' : ''; ?>>
+                                                                <?php echo htmlspecialchars($motivo['Motivo']); ?>
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="categoria" class="form-label">Categoría</label>
+                                                    <select class="form-control" name="categoria" required>
+                                                        <?php foreach ($catalogoCategorias as $categoria): ?>
+                                                            <option value="<?php echo $categoria['idCategoria']; ?>" <?php echo $evaluado['idCategoria'] == $categoria['idCategoria'] ? 'selected' : ''; ?>>
+                                                                <?php echo htmlspecialchars($categoria['Categoria']); ?>
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="municipio" class="form-label">Municipio</label>
+                                                    <select class="form-control" name="municipio" required>
+                                                        <?php foreach ($catalogoMunicipios as $municipio): ?>
+                                                            <option value="<?php echo $municipio['idMunicipio']; ?>" <?php echo $evaluado['idMunicipio'] == $municipio['idMunicipio'] ? 'selected' : ''; ?>>
+                                                                <?php echo htmlspecialchars($municipio['Municipio']); ?>
+                                                            </option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="estadoDocumentacion" class="form-label">Estado Documentación</label>
+                                                    <select class="form-control" name="estadoDocumentacion" required>
+                                                        <option value="Completo" <?php echo $evaluado['EstadoDocumentacion'] == 'Completo' ? 'selected' : ''; ?>>Completo</option>
+                                                        <option value="Pendiente" <?php echo $evaluado['EstadoDocumentacion'] == 'Pendiente' ? 'selected' : ''; ?>>Pendiente</option>
+                                                        <option value="Observaciones" <?php echo $evaluado['EstadoDocumentacion'] == 'Observaciones' ? 'selected' : ''; ?>>Observaciones</option>
+                                                    </select>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="comentarios" class="form-label">Comentarios</label>
+                                                    <textarea class="form-control" name="comentarios" rows="3"><?php echo htmlspecialchars($evaluado['Comentarios'] ?? ''); ?></textarea>
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                <button type="submit" name="editar_evaluado" class="btn btn-primary">Guardar Cambios</button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                            <?php endif; ?>
+
 
                         <?php endforeach; ?>
                     <?php else: ?>
@@ -355,5 +371,5 @@ try {
         </div>
       <?php include 'footer.php'; ?>
 </body>
- 
+
 </html>

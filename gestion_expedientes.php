@@ -3,6 +3,12 @@ session_start();
 include 'conexion.php';
 require 'auth.php';
 
+// Verificar si el usuario ha iniciado sesión y su rol es válido (gestor, enlace o administrador)
+if (!isset($_SESSION['usuario']) || ($_SESSION['rol'] !== 'gestor' && $_SESSION['rol'] !== 'enlace' && $_SESSION['rol'] !== 'administrador')) {
+    header("Location: login.php");
+    exit();
+}
+
 // Mensajes de éxito o error
 $mensaje = "";
 
@@ -14,8 +20,8 @@ if (!file_exists(BASE_PATH)) {
     mkdir(BASE_PATH, 0777, true);
 }
 
-// Crear un nuevo expediente
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['crear_expediente'])) {
+// Crear un nuevo expediente (Permitido para Administrador y Gestor)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['crear_expediente']) && ($_SESSION['rol'] === 'administrador' || $_SESSION['rol'] === 'gestor')) {
     $folio_expediente = trim($_POST['numero_expediente']);
     $comentarios = trim($_POST['comentarios']);
 
@@ -32,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['crear_expediente'])) 
                 $mensaje = "Error: Ya existe un expediente con el número $folio_expediente.";
             } else {
                 // Insertar el expediente
-                $stmt = $conn->prepare("INSERT INTO expedientes (FolioExpediente, Estado, Comentarios) 
+                $stmt = $conn->prepare("INSERT INTO expedientes (FolioExpediente, Estado, Comentarios)
                                         VALUES (:FolioExpediente, 'Abierto', :Comentarios)");
                 $stmt->bindParam(':FolioExpediente', $folio_expediente, PDO::PARAM_STR);
                 $stmt->bindParam(':Comentarios', $comentarios, PDO::PARAM_STR);
@@ -52,8 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['crear_expediente'])) 
     }
 }
 
-// Eliminar un expediente
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_expediente'])) {
+// Eliminar un expediente (Permitido para Administrador y Gestor)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_expediente']) && ($_SESSION['rol'] === 'administrador' || $_SESSION['rol'] === 'gestor')) {
     $expediente_id = intval($_POST['expediente_id']);
 
     try {
@@ -84,8 +90,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_expediente']
     }
 }
 
-// Editar un expediente
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_expediente'])) {
+// Editar un expediente (Permitido para Administrador y Gestor)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['editar_expediente']) && ($_SESSION['rol'] === 'administrador' || $_SESSION['rol'] === 'gestor')) {
     $expediente_id = intval($_POST['expediente_id']);
     $estado = $_POST['estado'];
     $comentarios = trim($_POST['comentarios']);
@@ -129,6 +135,7 @@ try {
             <div class="alert alert-info text-center"><?php echo $mensaje; ?></div>
         <?php endif; ?>
 
+        <?php if($_SESSION['rol'] === 'administrador' || $_SESSION['rol'] === 'gestor'): ?>
         <form method="POST" class="row g-3 mb-5">
             <div class="col-md-6">
                 <label for="numero_expediente" class="form-label">Número de Expediente</label>
@@ -142,6 +149,7 @@ try {
                 <button type="submit" name="crear_expediente" class="btn btn-primary">Crear Expediente</button>
             </div>
         </form>
+        <?php endif; ?>
 
         <h2 class="mb-4 text-center">Listado de Expedientes</h2>
         <div class="table-responsive">
@@ -166,21 +174,28 @@ try {
                                 <td><?php echo htmlspecialchars($expediente['Comentarios']); ?></td>
                                 <td><?php echo htmlspecialchars($expediente['FechaCreacion']); ?></td>
                                 <td>
-                                    <form method="POST" class="d-inline">
-                                        <input type="hidden" name="expediente_id" value="<?php echo $expediente['idExpediente']; ?>">
-                                        <select name="estado" class="form-select form-select-sm d-inline w-auto">
-                                            <option value="Abierto" <?php echo $expediente['Estado'] === 'Abierto' ? 'selected' : ''; ?>>Abierto</option>
-                                            <option value="En Revisión" <?php echo $expediente['Estado'] === 'En Revisión' ? 'selected' : ''; ?>>En Revisión</option>
-                                            <option value="Cerrado" <?php echo $expediente['Estado'] === 'Cerrado' ? 'selected' : ''; ?>>Cerrado</option>
-                                        </select>
-                                        <input type="text" name="comentarios" class="form-control form-control-sm d-inline w-auto" value="<?php echo htmlspecialchars($expediente['Comentarios']); ?>">
-                                        <button type="submit" name="editar_expediente" class="btn btn-success btn-sm">Actualizar</button>
-                                    </form>
-                                    <a href="programacion.php?idExpediente=<?php echo $expediente['idExpediente']; ?>" class="btn btn-info btn-sm">Administrar</a>
-                                    <form method="POST" class="d-inline">
-                                        <input type="hidden" name="expediente_id" value="<?php echo $expediente['idExpediente']; ?>">
-                                        <button type="submit" name="eliminar_expediente" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro de eliminar este expediente?')">Eliminar</button>
-                                    </form>
+                                    <div class="d-flex flex-column gap-1">
+                                    <a href="programacion.php?idExpediente=<?php echo $expediente['idExpediente']; ?>" class="btn btn-info btn-sm w-100 mb-1">Ver Programación</a>
+                                    <?php if($_SESSION['rol'] === 'administrador' || $_SESSION['rol'] === 'gestor'): ?>
+                                        <form method="POST" class="d-inline w-100 mb-1">
+                                            <input type="hidden" name="expediente_id" value="<?php echo $expediente['idExpediente']; ?>">
+                                            <select name="estado" class="form-select form-select-sm d-inline w-auto">
+                                                <option value="Abierto" <?php echo $expediente['Estado'] === 'Abierto' ? 'selected' : ''; ?>>Abierto</option>
+                                                <option value="En Revisión" <?php echo $expediente['Estado'] === 'En Revisión' ? 'selected' : ''; ?>>En Revisión</option>
+                                                <option value="Cerrado" <?php echo $expediente['Estado'] === 'Cerrado' ? 'selected' : ''; ?>>Cerrado</option>
+                                            </select>
+                                            <input type="text" name="comentarios" class="form-control form-control-sm d-inline w-auto" value="<?php echo htmlspecialchars($expediente['Comentarios']); ?>">
+                                            <button type="submit" name="editar_expediente" class="btn btn-success btn-sm">Actualizar Estado</button>
+                                        </form>
+                                        <form method="POST" class="d-inline w-100">
+                                            <input type="hidden" name="expediente_id" value="<?php echo $expediente['idExpediente']; ?>">
+                                            <button type="submit" name="eliminar_expediente" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro de eliminar este expediente?')">Eliminar Expediente</button>
+                                        </form>
+                                    <?php endif; ?>
+                                    </div>
+                                        <?php if($_SESSION['rol'] === 'enlace'): ?>
+                                            <span class="text-muted">Solo Visualización</span>
+                                        <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

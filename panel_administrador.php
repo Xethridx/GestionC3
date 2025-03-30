@@ -1,4 +1,5 @@
 <?php
+// panel_administrador.php
 // Iniciar sesión
 session_start();
 
@@ -155,7 +156,7 @@ $nombre_admin = htmlspecialchars($_SESSION['usuario']);
                                     <i class="fas fa-life-ring fa-3x text-danger mb-3"></i>
                                     <h5 class="card-title">Ayuda Técnica</h5>
                                     <p class="card-text">Encuentra soporte y manuales.</p>
-                                    <a href="ayuda.php" class="btn btn-danger">Acceder</a>
+                                    <a href="soporte.php" class="btn btn-danger">Acceder</a>
                                 </div>
                             </div>
                         </div>

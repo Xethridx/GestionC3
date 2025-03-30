@@ -1,14 +1,14 @@
 <?php
 session_start();
 include 'conexion.php';
-/*
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+// Initialize $error variable to null or an empty string
+$error = null; // Or $error = "";
 
-
- Cerrar sesión automáticamente al acceder a index.php
+/* Cerrar sesión automáticamente al acceder a index.php
 session_unset();
 session_destroy();*/
 ?>
@@ -19,13 +19,11 @@ session_destroy();*/
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión Documental C3 - Inicio</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="assets/styles/styles.css">
+    <link rel="stylesheet" href="/opt/lampp/htdocs/GestionC3/assets/styles/styles.css">
     <style>
         .hero-section {
-            background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('assets/images/hero-bg-optimized.jpg') center/cover no-repeat;
+            background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)), url('assets/images/hero-bg-optimized.png') center/cover no-repeat;
             color: #fff;
             padding: 80px 20px;
             text-align: center;
@@ -51,10 +49,8 @@ session_destroy();*/
     </style>
 </head>
 <body>
-    <!-- Navbar -->
     <?php include 'navbar.php'; ?>
 
-    <!-- Hero Section -->
     <div class="hero-section">
         <div class="container">
             <h1 class="display-4 fw-bold">Gestión Documental C3</h1>
@@ -62,20 +58,19 @@ session_destroy();*/
         </div>
     </div>
 
-    <!-- Main Content -->
     <div class="container my-5">
         <div class="row">
-            <!-- Welcome Section -->
-            <div class="col-md-6 d-flex flex-column justify-content-center">
-                <h2 class="fw-bold">Bienvenido</h2>
-                <p>Nuestra plataforma asegura procesos ágiles y seguros en la recepción y validación de documentos, fortaleciendo la confianza institucional.</p>
+            <div class="col-md-6 d-flex flex-column justify-content-center" data-aos="fade-right"> <h2 class="fw-bold"> <i class="fas fa-file-alt text-primary me-2"></i> Gestión Documental C3</h2> <p class="lead">Eficiencia y seguridad en la gestión documental</p>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> <strong>Agilizar Procesos:</strong>  .</li>
+                    <li class="mb-2"><i class="fas fa-shield-alt text-info me-2"></i> <strong>Seguridad Robusta:</strong> .</li>
+                    <li class="mb-2"><i class="fas fa-users-cog text-secondary me-2"></i> <strong>Colaboración Eficaz:</strong>  </li>
+                    <li class="mb-2"><i class="fas fa-chart-line text-warning me-2"></i> <strong>Mejora Continua:</strong> </li>
+                </ul>
             </div>
-            <!-- Login Form -->
-            <div class="col-md-6">
-                <div class="card shadow">
+            <div class="col-md-6" data-aos="fade-left"> <div class="card shadow">
                     <div class="card-body">
-                        <h3 class="text-center mb-4">Iniciar Sesión</h3>
-                        <form action="login.php" method="POST">
+                        <h3 class="text-center mb-4"><i class="fas fa-sign-in-alt text-primary me-2"></i> Iniciar Sesión</h3> <form action="login.php" method="POST">
                             <div class="mb-3">
                                 <label for="usuario" class="form-label">Usuario</label>
                                 <input type="text" class="form-control" id="usuario" name="usuario" placeholder="Ingresa tu usuario" required>
@@ -87,8 +82,7 @@ session_destroy();*/
                             <?php if ($error): ?>
                                 <div class="alert alert-danger text-center"><?php echo $error; ?></div>
                             <?php endif; ?>
-                            <button type="submit" class="btn btn-primary w-100">Iniciar Sesión</button>
-                        </form>
+                            <button type="submit" class="btn btn-primary w-100"> <i class="fas fa-lock me-2"></i> Iniciar Sesión</button> </form>
                         <div class="text-center mt-3">
                             <a href="recuperar_contraseña.php">¿Olvidaste tu contraseña?</a> |
                             <a href="registro.php">¿No tienes cuenta? Regístrate aquí.</a>
@@ -99,10 +93,18 @@ session_destroy();*/
         </div>
     </div>
 
-    <!-- Footer -->
     <?php include 'footer.php'; ?>
 
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aos@2.3.4/dist/aos.js"></script>
+    <script>
+        AOS.init({
+             duration: 800, // Duración de la animación
+             easing: 'ease-in-out', // Tipo de easing
+             once: true, //  Si la animación se reproduce solo una vez
+             mirror: false, // Si las animaciones en scroll deben espejarse
+             offset: 100, // Offset (en px) desde el punto de activación original
+        });
+    </script>
 </body>
 </html>

@@ -2,18 +2,23 @@
 session_start();
 include 'conexion.php';
 
-// Verificar permisos
-if (!isset($_SESSION['usuario']) || !in_array($_SESSION['rol'], ['administrador', 'gestor'])) {
+// Verificar permisos: Solo administrador y coordinador
+if (!isset($_SESSION['usuario']) || !in_array($_SESSION['rol'], ['administrador', 'coordinacion'])) {
     header("Location: login.php");
     exit();
 }
 
-// Obtener Expedientes
+$mensaje_error_expedientes = "";
+$expedientes = [];
+
 try {
     $stmtExpedientes = $conn->query("SELECT idExpediente, FolioExpediente, FechaCreacion FROM expedientes ORDER BY FechaCreacion DESC");
     $expedientes = $stmtExpedientes->fetchAll(PDO::FETCH_ASSOC);
+    if (empty($expedientes)) {
+        $mensaje_error_expedientes = "No se encontraron expedientes registrados.";
+    }
 } catch (PDOException $e) {
-    die("Error al obtener expedientes: " . $e->getMessage());
+    $mensaje_error_expedientes = "Error al obtener expedientes: " . $e->getMessage();
 }
 ?>
 <!DOCTYPE html>
@@ -30,7 +35,12 @@ try {
     <div class="container my-5">
         <h1 class="text-center mb-4">Revisar Documentos</h1>
 
-        <!-- Tabla de Expedientes -->
+        <?php if (!empty($mensaje_error_expedientes)): ?>
+            <div class="alert alert-danger" role="alert">
+                <?php echo $mensaje_error_expedientes; ?>
+            </div>
+        <?php endif; ?>
+
         <h3 class="mb-3">Listado de Expedientes</h3>
         <div class="table-responsive">
             <table class="table table-striped table-bordered">
@@ -43,67 +53,63 @@ try {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($expedientes as $index => $expediente): ?>
-                        <tr>
-                            <td><?php echo $index + 1; ?></td>
-                            <td><?php echo htmlspecialchars($expediente['FolioExpediente']); ?></td>
-                            <td><?php echo htmlspecialchars($expediente['FechaCreacion']); ?></td>
-                            <td>
-                                <button class="btn btn-primary btn-sm load-users" 
-                                        data-expediente-id="<?php echo $expediente['idExpediente']; ?>" 
-                                        data-folio-expediente="<?php echo htmlspecialchars($expediente['FolioExpediente']); ?>">
-                                    Ver Usuarios
-                                </button>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
+                    <?php if (empty($expedientes) && empty($mensaje_error_expedientes)): ?>
+                        <tr><td colspan="4" class="text-center">No hay expedientes disponibles.</td></tr>
+                    <?php else: ?>
+                        <?php foreach ($expedientes as $index => $expediente): ?>
+                            <tr>
+                                <td><?php echo $index + 1; ?></td>
+                                <td><?php echo htmlspecialchars($expediente['FolioExpediente']); ?></td>
+                                <td><?php echo htmlspecialchars($expediente['FechaCreacion']); ?></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm btn-usuarios-modal"
+                                            data-expediente-id="<?php echo $expediente['idExpediente']; ?>"
+                                            data-folio-expediente="<?php echo htmlspecialchars($expediente['FolioExpediente']); ?>">
+                                        Ver Usuarios
+                                    </button>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
 
-        <!-- Tabla de Usuarios -->
-        <div class="mt-5" id="usuarios-container" style="display: none;">
-            <h3>Usuarios del Expediente: <span id="folio-actual"></span></h3>
-            <div class="table-responsive">
-                <table class="table table-striped table-bordered">
-                    <thead>
-                        <tr>
-                            <th>CURP</th>
-                            <th>Nombre Completo</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usuarios-tbody"></tbody>
-                </table>
+        <div class="modal fade" id="usuariosModal" tabindex="-1" aria-labelledby="usuariosModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="usuariosModalLabel">Usuarios del Expediente: <span id="modal-folio-expediente"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="modal-usuarios-body">
+                        </div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        document.querySelectorAll('.load-users').forEach(button => {
+        document.querySelectorAll('.btn-usuarios-modal').forEach(button => {
             button.addEventListener('click', function () {
                 const expedienteId = this.dataset.expedienteId;
                 const folioExpediente = this.dataset.folioExpediente;
+                const modalBody = document.getElementById('modal-usuarios-body');
+                const modalFolio = document.getElementById('modal-folio-expediente');
 
-                fetch(`api_get_usuarios.php?expedienteId=${expedienteId}`)
-                    .then(response => response.json())
-                    .then(users => {
-                        const tbody = document.getElementById('usuarios-tbody');
-                        tbody.innerHTML = '';
-                        users.forEach(user => {
-                            tbody.innerHTML += `
-                                <tr>
-                                    <td>${user.CURP}</td>
-                                    <td>${user.NombreCompleto}</td>
-                                    <td>
-                                        <a href="ver_documentos.php?curp=${user.CURP}&expedienteId=${expedienteId}" class="btn btn-info btn-sm">Ver Documentos</a>
-                                    </td>
-                                </tr>
-                            `;
-                        });
+                modalFolio.textContent = folioExpediente;
+                modalBody.innerHTML = '<div class="text-center">Cargando usuarios... <div class="spinner-border spinner-border-sm" role="status"></div></div>'; // Mensaje de carga
 
-                        document.getElementById('folio-actual').textContent = folioExpediente;
-                        document.getElementById('usuarios-container').style.display = 'block';
+                fetch(`modal_usuarios.php?expedienteId=${expedienteId}`)
+                    .then(response => response.text())
+                    .then(html => {
+                        modalBody.innerHTML = html; // Insertar la tabla de usuarios en el modal
+                        const usuariosModal = new bootstrap.Modal(document.getElementById('usuariosModal'));
+                        usuariosModal.show(); // Mostrar el modal
+                    })
+                    .catch(error => {
+                        modalBody.innerHTML = '<div class="alert alert-danger">Error al cargar usuarios. Por favor, intenta nuevamente.</div>'; // Mensaje de error en el modal
+                        console.error('Error al cargar usuarios:', error);
                     });
             });
         });

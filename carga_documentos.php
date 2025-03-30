@@ -1,314 +1,231 @@
 <?php
 session_start();
-include 'conexion.php'; // Asegúrate de que este archivo contiene la conexión a la base de datos ($conn)
+include 'conexion.php';
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// *** FUNCIONES DE CONSULTA A LA BASE DE DATOS ***
-
-function obtenerFolioExpediente($conn, $idExpediente) {
-    try {
-        $stmtExpediente = $conn->prepare("SELECT FolioExpediente FROM expedientes WHERE idExpediente = :idExpediente");
-        $stmtExpediente->bindParam(':idExpediente', $idExpediente, PDO::PARAM_INT);
-        $stmtExpediente->execute();
-        $expediente = $stmtExpediente->fetch(PDO::FETCH_ASSOC);
-
-        if (!$expediente) {
-            error_log("carga_documentos.php: Error - Expediente no encontrado: idExpediente=$idExpediente");
-            return false;
-        }
-        return $expediente['FolioExpediente'];
-    } catch (PDOException $e) {
-        error_log("carga_documentos.php: PDOException - obtenerFolioExpediente: " . $e->getMessage());
-        return false;
-    }
+// Validar permisos: Administrador y Enlace pueden acceder
+if (!isset($_SESSION['usuario']) || ($_SESSION['rol'] !== 'administrador' && $_SESSION['rol'] !== 'enlace')) {
+    header("Location: login.php");
+    exit();
 }
 
-function obtenerDetallesEvaluado($conn, $curp) {
-    try {
-        $stmtElemento = $conn->prepare("
-            SELECT e.idSolicitud, e.Nombre, e.ApellidoP, e.ApellidoM
-            FROM programacion_evaluados e
-            WHERE e.CURP = :curp
-        ");
-        $stmtElemento->bindParam(':curp', $curp, PDO::PARAM_STR);
-        $stmtElemento->execute();
-        $elemento = $stmtElemento->fetch(PDO::FETCH_ASSOC);
+// Validar parámetros GET y asignar variables
+$idExpediente = isset($_GET['expediente']) ? intval($_GET['expediente']) : 0;
+$curp = isset($_GET['curp']) ? htmlspecialchars($_GET['curp']) : '';
+$tipoEvaluacionId = isset($_GET['tipoEvaluacion']) ? intval($_GET['tipoEvaluacion']) : 0;
 
-        if (!$elemento) {
-            error_log("carga_documentos.php: Error - Evaluado no encontrado: CURP=$curp");
-            return false;
-        }
-        return $elemento;
-    } catch (PDOException $e) {
-        error_log("carga_documentos.php: PDOException - obtenerDetallesEvaluado: " . $e->getMessage());
-        return false;
-    }
+if (!$idExpediente || !$curp || !$tipoEvaluacionId) {
+    die("Error: Parámetros insuficientes.");
 }
 
+// Función para obtener información del expediente y carpeta
+function obtenerExpedienteInfo($conn, $idExpediente) {
+    $stmtExpediente = $conn->prepare("SELECT FolioExpediente FROM expedientes WHERE idExpediente = :idExpediente");
+    $stmtExpediente->bindParam(':idExpediente', $idExpediente, PDO::PARAM_INT);
+    $stmtExpediente->execute();
+    $expediente = $stmtExpediente->fetch(PDO::FETCH_ASSOC);
+
+    if (!$expediente) {
+        die("Error: Expediente no encontrado.");
+    }
+    return [
+        'folioExpediente' => $expediente['FolioExpediente'],
+        'carpetaExpediente' => __DIR__ . "/Expedientes/" . $expediente['FolioExpediente']
+    ];
+}
+
+// Función para obtener información del evaluado
+function obtenerEvaluadoInfo($conn, $curp) {
+    $stmtElemento = $conn->prepare("
+        SELECT idSolicitud, Nombre, ApellidoP, ApellidoM
+        FROM programacion_evaluados
+        WHERE CURP = :curp
+    ");
+    $stmtElemento->bindParam(':curp', $curp, PDO::PARAM_STR);
+    $stmtElemento->execute();
+    $elemento = $stmtElemento->fetch(PDO::FETCH_ASSOC);
+
+    if (!$elemento) {
+        die("Error: Evaluado no encontrado.");
+    }
+    return $elemento;
+}
+
+// Función para consultar documentos requeridos por motivo de evaluación
 function obtenerDocumentosRequeridos($conn, $tipoEvaluacionId) {
-    try {
-        $stmtRequeridos = $conn->prepare("
-            SELECT td.idTipoDocumento, td.Documento
-            FROM tipo_documento_motivo tdm
-            JOIN tipo_documento td ON tdm.idTipoDocumento = td.idTipoDocumento
-            WHERE tdm.idMotivo = :idMotivo
-        ");
-        $stmtRequeridos->bindParam(':idMotivo', $tipoEvaluacionId, PDO::PARAM_INT);
-        $stmtRequeridos->execute();
-        return $documentosRequeridos = $stmtRequeridos->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        error_log("carga_documentos.php: PDOException - obtenerDocumentosRequeridos: " . $e->getMessage());
-        return false;
-    }
+    $stmtRequeridos = $conn->prepare("
+        SELECT td.idTipoDocumento, td.Documento
+        FROM tipo_documento_motivo tdm
+        JOIN tipo_documento td ON tdm.idTipoDocumento = td.idTipoDocumento
+        WHERE tdm.idMotivo = :idMotivo
+    ");
+    $stmtRequeridos->bindParam(':idMotivo', $tipoEvaluacionId, PDO::PARAM_INT);
+    $stmtRequeridos->execute();
+    return $stmtRequeridos->fetchAll(PDO::FETCH_ASSOC);
 }
 
+// Función para consultar documentos existentes en el expediente del evaluado
 function obtenerDocumentosExistentes($conn, $idExpediente, $idElemento) {
-    try {
-        $stmtDocumentos = $conn->prepare("
-            SELECT d.idDocumento, d.idTipoDocumento, d.NombreArchivo, d.RutaArchivo, d.EstadoRevision, d.Comentarios, td.Documento
-            FROM documentos_expediente d
-            JOIN tipo_documento td ON d.idTipoDocumento = td.idTipoDocumento
-            WHERE d.idExpediente = :idExpediente AND d.idElemento = :idElemento
-        ");
-        $stmtDocumentos->bindParam(':idExpediente', $idExpediente, PDO::PARAM_INT);
-        $stmtDocumentos->bindParam(':idElemento', $idElemento, PDO::PARAM_INT);
-        $stmtDocumentos->execute();
-        return $documentosExistentes = $stmtDocumentos->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        error_log("carga_documentos.php: PDOException - obtenerDocumentosExistentes: " . $e->getMessage());
-        return false;
-    }
+    $stmtDocumentos = $conn->prepare("
+        SELECT d.idDocumento, d.idTipoDocumento, d.NombreArchivo, d.RutaArchivo, d.EstadoRevision, d.Comentarios, td.Documento
+        FROM documentos_expediente d
+        JOIN tipo_documento td ON d.idTipoDocumento = td.idTipoDocumento
+        WHERE d.idExpediente = :idExpediente AND d.idElemento = :idElemento
+    ");
+    $stmtDocumentos->bindParam(':idExpediente', $idExpediente, PDO::PARAM_INT);
+    $stmtDocumentos->bindParam(':idElemento', $idElemento, PDO::PARAM_INT);
+    $stmtDocumentos->execute();
+    return $stmtDocumentos->fetchAll(PDO::FETCH_ASSOC);
 }
 
-function insertarOActualizarDocumento($conn, $dataDocumento) {
-    try {
-        $stmtInsertar = $conn->prepare("
-            INSERT INTO documentos_expediente (idExpediente, idElemento, idTipoDocumento, NombreArchivo, RutaArchivo, EstadoRevision, Comentarios)
-            VALUES (:idExpediente, :idElemento, :idTipoDocumento, :nombreArchivo, :rutaArchivo, 'Enviado', :comentarios)
-            ON DUPLICATE KEY UPDATE
-            NombreArchivo = :nombreArchivo,
-            RutaArchivo = :rutaArchivo,
-            EstadoRevision = 'Enviado',
-            Comentarios = :comentarios,
-            FechaCarga = CURRENT_TIMESTAMP
-        ");
-        $stmtInsertar->bindParam(':idExpediente', $dataDocumento['idExpediente'], PDO::PARAM_INT);
-        $stmtInsertar->bindParam(':idElemento', $dataDocumento['idElemento'], PDO::PARAM_INT);
-        $stmtInsertar->bindParam(':idTipoDocumento', $dataDocumento['idTipoDocumento'], PDO::PARAM_INT);
-        $stmtInsertar->bindParam(':nombreArchivo', $dataDocumento['nombreArchivo'], PDO::PARAM_STR);
-        $stmtInsertar->bindParam(':rutaArchivo', $dataDocumento['rutaArchivo'], PDO::PARAM_STR);
-        $stmtInsertar->bindParam(':comentarios', $dataDocumento['comentarios'], PDO::PARAM_STR);
-        if (!$stmtInsertar->execute()) {
-            error_log("carga_documentos.php: Error en execute Insertar/Actualizar Documento: " . print_r($stmtInsertar->errorInfo(), true));
-            return false;
+// Obtener información del expediente
+$expedienteInfo = obtenerExpedienteInfo($conn, $idExpediente);
+$folioExpediente = $expedienteInfo['folioExpediente'];
+$carpetaExpediente = $expedienteInfo['carpetaExpediente'];
+
+// Obtener información del evaluado
+$elemento = obtenerEvaluadoInfo($conn, $curp);
+$idElemento = $elemento['idSolicitud'];
+
+// Crear carpeta del evaluado si no existe
+$carpetaEvaluado = $carpetaExpediente . "/" . $curp;
+if (!file_exists($carpetaEvaluado)) {
+    mkdir($carpetaEvaluado, 0777, true);
+}
+
+// Obtener documentos requeridos y existentes
+$documentosRequeridos = obtenerDocumentosRequeridos($conn, $tipoEvaluacionId);
+$documentosExistentes = obtenerDocumentosExistentes($conn, $idExpediente, $idElemento);
+
+// Combinar documentos requeridos y existentes (simplificado)
+$documentos = array_map(function ($requerido) use ($documentosExistentes) {
+    foreach ($documentosExistentes as $existente) {
+        if ($requerido['idTipoDocumento'] == $existente['idTipoDocumento']) {
+            return $existente;
         }
-        return true;
-    } catch (PDOException $e) {
-        error_log("carga_documentos.php: PDOException - insertarOActualizarDocumento: " . $e->getMessage());
-        return false;
     }
+    return [
+        'idDocumento' => null,
+        'idTipoDocumento' => $requerido['idTipoDocumento'],
+        'NombreArchivo' => null,
+        'RutaArchivo' => null,
+        'EstadoRevision' => 'Pendiente',
+        'Comentarios' => null,
+        'Documento' => $requerido['Documento']
+    ];
+}, $documentosRequeridos);
+
+
+// Función para verificar si todos los documentos están en estado 'Enviado' o superior
+function todosDocumentosEnviados($documentos) {
+    if (empty($documentos)) return false;
+    foreach ($documentos as $doc) {
+        if ($doc['EstadoRevision'] === 'Pendiente') return false;
+    }
+    return true;
 }
 
+$mensajes = [];
 
-function eliminarDocumento($conn, $idDocumento) {
+// Función para manejar la carga de documentos vía AJAX
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'subir_documento_ajax') {
+    $idTipoDocumento = intval($_POST['idTipoDocumento']);
+    $comentarios = trim($_POST['comentarios'] ?? '');
+    $archivo = $_FILES['documento'];
+
+    $maxSizeBytesPHP = 5 * 1024 * 1024; // 5MB
+    $allowedTypesPHP = ['application/pdf']; // PDF
+
+    if ($archivo['error'] === UPLOAD_ERR_OK) {
+        if ($archivo['size'] > $maxSizeBytesPHP) {
+            echo json_encode(['error' => 'Error: Archivo excede 5MB.', 'idTipoDocumento' => $idTipoDocumento]);
+            exit();
+        } elseif (!in_array($archivo['type'], $allowedTypesPHP)) {
+            echo json_encode(['error' => 'Error: Solo PDF permitidos.', 'idTipoDocumento' => $idTipoDocumento]);
+            exit();
+        } else {
+            $extension = pathinfo($archivo['name'], PATHINFO_EXTENSION);
+            $nombreDocumento = $documentosRequeridos[array_search($idTipoDocumento, array_column($documentosRequeridos, 'idTipoDocumento'))]['Documento'];
+            $nombreArchivo = "{$curp}_" . str_replace(' ', '', $nombreDocumento) . ".$extension";
+            $rutaDestinoRelativaWeb = "/Expedientes/$folioExpediente/$curp/$nombreArchivo";
+            $rutaDestinoAbsolutaServidor = $carpetaEvaluado . "/" . $nombreArchivo;
+
+            if (move_uploaded_file($archivo['tmp_name'], $rutaDestinoAbsolutaServidor)) {
+                try {
+                    $stmtInsertar = $conn->prepare("
+                        INSERT INTO documentos_expediente (idExpediente, idElemento, idTipoDocumento, NombreArchivo, RutaArchivo, EstadoRevision, Comentarios)
+                        VALUES (:idExpediente, :idElemento, :idTipoDocumento, :nombreArchivo, :rutaArchivo, 'Enviado', :comentarios)
+                        ON DUPLICATE KEY UPDATE RutaArchivo = :rutaArchivo, EstadoRevision = 'Enviado', Comentarios = :comentarios
+                    ");
+                    $stmtInsertar->execute([
+                        ':idExpediente' => $idExpediente,
+                        ':idElemento' => $idElemento,
+                        ':idTipoDocumento' => $idTipoDocumento,
+                        ':nombreArchivo' => $nombreArchivo,
+                        ':rutaArchivo' => $rutaDestinoRelativaWeb,
+                        ':comentarios' => $comentarios,
+                        'rutaArchivo' => $rutaDestinoRelativaWeb //Bind para ON DUPLICATE KEY UPDATE
+                    ]);
+
+                    // Obtener el ID del documento recién insertado
+                    $idDocumentoInsertado = $conn->lastInsertId();
+
+                    echo json_encode(['success' => 'Documento subido correctamente.', 'idTipoDocumento' => $idTipoDocumento, 'nombreArchivo' => $nombreArchivo, 'rutaArchivo' => $rutaDestinoRelativaWeb, 'idDocumento' => $idDocumentoInsertado]);
+                    exit();
+                } catch (PDOException $e) {
+                    echo json_encode(['error' => 'Error al registrar documento: ' . $e->getMessage(), 'idTipoDocumento' => $idTipoDocumento]);
+                    exit();
+                }
+            } else {
+                echo json_encode(['error' => 'Error al subir documento.', 'idTipoDocumento' => $idTipoDocumento]);
+                exit();
+            }
+        }
+    } elseif ($archivo['error'] !== UPLOAD_ERR_NO_FILE) {
+        echo json_encode(['error' => 'Error en la subida del archivo, código: ' . $archivo['error'], 'idTipoDocumento' => $idTipoDocumento]);
+        exit();
+    }
+}
+// Función para manejar la eliminación de documentos vía AJAX
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'eliminar_documento_ajax') {
+    $idDocumento = intval($_POST['idDocumento']);
     try {
-        // Obtener idTipoDocumento, idElemento, idExpediente antes de eliminar
-        $stmtObtenerInfo = $conn->prepare("SELECT idTipoDocumento, idElemento, idExpediente FROM documentos_expediente WHERE idDocumento = :idDocumento");
+        // Obtener información del documento antes de eliminar
+        $stmtObtenerInfo = $conn->prepare("SELECT RutaArchivo, idTipoDocumento, idElemento, idExpediente FROM documentos_expediente WHERE idDocumento = :idDocumento");
         $stmtObtenerInfo->bindParam(':idDocumento', $idDocumento, PDO::PARAM_INT);
         $stmtObtenerInfo->execute();
         $docInfo = $stmtObtenerInfo->fetch(PDO::FETCH_ASSOC);
 
         if ($docInfo) {
-            $idTipoDocumento = $docInfo['idTipoDocumento'];
-            $idElemento = $docInfo['idElemento'];
-            $idExpediente = $docInfo['idExpediente'];
-
-            // Eliminar documento de la tabla documentos_expediente
-            $stmtEliminar = $conn->prepare("DELETE FROM documentos_expediente WHERE idDocumento = :idDocumento");
-            $stmtEliminar->bindParam(':idDocumento', $idDocumento, PDO::PARAM_INT);
-            $stmtEliminar->execute();
-
-             // Insertar de nuevo registro con estado 'Pendiente'
-             try {
-                $stmtInsertarPendiente = $conn->prepare("
-                    INSERT INTO documentos_expediente (idExpediente, idElemento, idTipoDocumento, EstadoRevision)
-                    VALUES (:idExpediente, :idElemento, :idTipoDocumento, 'Pendiente')
-                    ON DUPLICATE KEY UPDATE EstadoRevision = 'Pendiente', RutaArchivo = NULL, NombreArchivo = NULL, Comentarios = NULL
-                ");
-                $stmtInsertarPendiente->bindParam(':idExpediente', $idExpediente, PDO::PARAM_INT);
-                $stmtInsertarPendiente->bindParam(':idElemento', $idElemento, PDO::PARAM_INT);
-                $stmtInsertarPendiente->bindParam(':idTipoDocumento', $idTipoDocumento, PDO::PARAM_INT);
-                $stmtInsertarPendiente->execute();
-                return true; // Eliminación y actualización a pendiente exitosas
-            } catch (PDOException $e) {
-                error_log("carga_documentos.php: PDOException - actualizarEstadoPendiente en eliminarDocumento: " . $e->getMessage());
-                return false; // Error al actualizar a pendiente
-            }
-        } else {
-            error_log("carga_documentos.php: Error - Documento no encontrado para eliminar: idDocumento=$idDocumento");
-            return false; // Documento no encontrado
-        }
-    } catch (PDOException $e) {
-        error_log("carga_documentos.php: PDOException - eliminarDocumento: " . $e->getMessage());
-        return false; // Error general al eliminar
-    }
-}
-
-
-function todosDocumentosEnviados($documentos) {
-    if (empty($documentos)) {
-        return false;
-    }
-    foreach ($documentos as $documento) {
-        if ($documento['EstadoRevision'] === 'Pendiente') {
-            return false;
-        }
-    }
-    return true;
-}
-
-// *** FIN DE FUNCIONES DE CONSULTA ***
-
-// *** VALIDACIÓN INICIAL DE PARÁMETROS GET ***
-if (!isset($_GET['expediente']) || !isset($_GET['curp']) || !isset($_GET['tipoEvaluacion'])) {
-    error_log("carga_documentos.php: Error - Parámetros GET insuficientes");
-    die("Error: Parámetros insuficientes para cargar documentos.");
-}
-
-$idExpediente = intval($_GET['expediente']);
-$curp = htmlspecialchars($_GET['curp']);
-$tipoEvaluacionId = intval($_GET['tipoEvaluacion']);
-
-// *** OBTENER DATOS INICIALES USANDO FUNCIONES ***
-$folioExpediente = obtenerFolioExpediente($conn, $idExpediente);
-if (!$folioExpediente) {
-    die("Error al obtener Folio del Expediente.");
-}
-
-$elemento = obtenerDetallesEvaluado($conn, $curp);
-if (!$elemento) {
-    die("Error al obtener detalles del Evaluado.");
-}
-
-$documentosRequeridos = obtenerDocumentosRequeridos($conn, $tipoEvaluacionId);
-if ($documentosRequeridos === false) {
-    die("Error al obtener documentos requeridos.");
-}
-
-$documentosExistentes = obtenerDocumentosExistentes($conn, $idExpediente, $elemento['idSolicitud']);
-if ($documentosExistentes === false) {
-    die("Error al obtener documentos existentes.");
-}
-
-$carpetaEvaluado = __DIR__ . "/Expedientes/$folioExpediente/$curp";
-if (!file_exists($carpetaEvaluado)) {
-    if (!mkdir($carpetaEvaluado, 0777, true)) { // Añadido '!' para verificar el resultado de mkdir
-        error_log("carga_documentos.php: Error al crear carpeta: $carpetaEvaluado");
-        die("Error al crear carpeta de expediente."); // Mensaje de error más específico
-    }
-    error_log("carga_documentos.php: Carpeta creada: $carpetaEvaluado");
-}
-
-$documentos = [];
-foreach ($documentosRequeridos as $requerido) {
-    $encontrado = false;
-    foreach ($documentosExistentes as $existente) {
-        if ($requerido['idTipoDocumento'] == $existente['idTipoDocumento']) {
-            $documentos[] = $existente;
-            $encontrado = true;
-            break;
-        }
-    }
-    if (!$encontrado) {
-        $documentos[] = [
-            'idDocumento' => null,
-            'idTipoDocumento' => $requerido['idTipoDocumento'],
-            'NombreArchivo' => null,
-            'RutaArchivo' => null,
-            'EstadoRevision' => 'Pendiente',
-            'Comentarios' => null,
-            'Documento' => $requerido['Documento']
-        ];
-    }
-}
-
-
-$mensajes = [];
-
-// *** PROCESAMIENTO DE SUBIDA DE DOCUMENTOS (POST - SIN AJAX) ***
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['subir_documento'])) {
-    error_log("carga_documentos.php: Inicio procesamiento POST - Subir Documento (SIN AJAX)");
-
-    $idExpedientePost = intval($_POST['expediente']);
-    $curpPost = htmlspecialchars($_POST['curp']);
-    $tipoEvaluacionIdPost = intval($_POST['tipoEvaluacion']);
-    $idTipoDocumentoPost = intval($_POST['idTipoDocumento']);
-    $comentariosPost = isset($_POST['comentarios']) ? trim($_POST['comentarios']) : '';
-
-
-    if (!empty($_FILES['documento']['name'])) {
-        $archivo = $_FILES['documento'];
-
-        $maxSizeBytesPHP = 5 * 1024 * 1024; // 5MB
-        $allowedTypesPHP = ['application/pdf'];
-
-        if ($archivo['size'] > $maxSizeBytesPHP) {
-            $mensajes[] = "<div class='alert alert-danger'>Error: El archivo excede el tamaño máximo (5MB).</div>";
-        } elseif (!in_array($archivo['type'], $allowedTypesPHP)) {
-            $mensajes[] = "<div class='alert alert-danger'>Error: Formato no permitido. Solo PDF.</div>";
-        } else {
-            $extension = pathinfo($archivo['name'], PATHINFO_EXTENSION);
-            $nombreDocumentoTipo = $documentosRequeridos[array_search($idTipoDocumentoPost, array_column($documentosRequeridos, 'idTipoDocumento'))]['Documento'];
-            $nombreArchivo = "{$curpPost}_" . str_replace(' ', '', $nombreDocumentoTipo) . ".$extension";
-            $rutaDestinoRelativaWeb = "/Expedientes/$folioExpediente/$curpPost/$nombreArchivo";
-            $rutaDestinoAbsolutaServidor = __DIR__ . "/Expedientes/$folioExpediente/$curpPost/$nombreArchivo";
-
-
-            if (move_uploaded_file($archivo['tmp_name'], $rutaDestinoAbsolutaServidor)) {
-                $dataDocumento = [
-                    'idExpediente' => $idExpedientePost,
-                    'idElemento' => $elemento['idSolicitud'],
-                    'idTipoDocumento' => $idTipoDocumentoPost,
-                    'nombreArchivo' => $nombreArchivo,
-                    'rutaArchivo' => $rutaDestinoRelativaWeb,
-                    'comentarios' => $comentariosPost,
-                ];
-
-                if (insertarOActualizarDocumento($conn, $dataDocumento)) {
-                    $mensajes[] = "<div class='alert alert-success'>Documento subido correctamente.</div>";
+            $rutaArchivoAbsoluta = __DIR__ . $docInfo['RutaArchivo'];
+            if (file_exists($rutaArchivoAbsoluta)) {
+                if (unlink($rutaArchivoAbsoluta)) {
+                    $stmtEliminar = $conn->prepare("DELETE FROM documentos_expediente WHERE idDocumento = :idDocumento");
+                    $stmtEliminar->bindParam(':idDocumento', $idDocumento, PDO::PARAM_INT);
+                    $stmtEliminar->execute();
+                    echo json_encode(['success' => 'Documento eliminado correctamente.', 'idTipoDocumento' => $docInfo['idTipoDocumento']]);
+                    exit();
                 } else {
-                    $mensajes[] = "<div class='alert alert-danger'>Error al registrar documento en la base de datos.</div>";
+                    echo json_encode(['error' => 'Error al eliminar el archivo del servidor.', 'idTipoDocumento' => $docInfo['idTipoDocumento']]);
+                    exit();
                 }
             } else {
-                $mensajes[] = "<div class='alert alert-danger'>Error al mover el archivo subido al servidor.</div>";
+                // El archivo no existe, pero se elimina la entrada de la base de datos
+                $stmtEliminar = $conn->prepare("DELETE FROM documentos_expediente WHERE idDocumento = :idDocumento");
+                $stmtEliminar->bindParam(':idDocumento', $idDocumento, PDO::PARAM_INT);
+                $stmtEliminar->execute();
+                echo json_encode(['success' => 'Documento eliminado de la base de datos (archivo no encontrado).', 'idTipoDocumento' => $docInfo['idTipoDocumento']]);
+                exit();
             }
+        } else {
+            echo json_encode(['error' => 'Documento no encontrado para eliminar.', 'idDocumento' => $idDocumento]);
+            exit();
         }
-    } else {
-        $mensajes[] = "<div class='alert alert-warning'>No se seleccionó ningún documento.</div>";
-    }
-}
-
-// *** PROCESAMIENTO DE ELIMINACIÓN DE DOCUMENTOS (POST - SIN AJAX) ***
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eliminar_documento'])) {
-    error_log("carga_documentos.php: Iniciando procesamiento POST - Eliminar Documento (SIN AJAX)");
-    $idDocumentoEliminar = intval($_POST['idDocumento']);
-    if (eliminarDocumento($conn, $idDocumentoEliminar)) {
-         $mensajes[] = "<div class='alert alert-success'>Documento eliminado correctamente. Estado actualizado a 'Pendiente'.</div>";
-    } else {
-        $mensajes[] = "<div class='alert alert-danger'>Error al eliminar el documento.</div>";
-    }
-}
-
-// *** PROCESAMIENTO DE ENVIAR A REVISIÓN (POST - SIN AJAX) ***
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_revision'])) {
-    error_log("carga_documentos.php: Inicio procesamiento POST - Enviar a Revisión (SIN AJAX)");
-     if (todosDocumentosEnviados($documentos)) {
-        // *** IMPLEMENTAR LÓGICA PARA ENVIAR A REVISIÓN AQUÍ (ej., actualizar estado en base de datos, enviar notificaciones) ***
-        $mensajes[] = "<div class='alert alert-success'>Documentos enviados a revisión correctamente!</div>";
-    } else {
-        $mensajes[] = "<div class='alert alert-warning'>Por favor, suba todos los documentos requeridos antes de enviar a revisión.</div>";
+    } catch (PDOException $e) {
+        echo json_encode(['error' => 'Error al eliminar documento: ' . $e->getMessage()]);
+        exit();
     }
 }
 
@@ -322,6 +239,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_revision'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Carga de Documentos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 </head>
 <body>
     <?php include 'navbar.php'; ?>
@@ -330,15 +248,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_revision'])) {
         <p><strong>Expediente:</strong> <?php echo htmlspecialchars($folioExpediente); ?></p>
         <p><strong>CURP:</strong> <?php echo htmlspecialchars($curp); ?></p>
 
-        <div id="mensajes">
-            <?php
-             if (!empty($mensajes)) {
-                 foreach ($mensajes as $mensaje) {
-                     echo $mensaje;
-                 }
-             }
-             ?>
-         </div>
+        <div id="mensajes"></div>
 
         <table class="table table-striped table-bordered">
             <thead class="table-dark">
@@ -352,43 +262,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_revision'])) {
             </thead>
             <tbody id="tabla-documentos">
                 <?php foreach ($documentos as $index => $documento): ?>
-                    <tr>
+                    <tr id="fila-documento-<?php echo $documento['idTipoDocumento']; ?>">
                         <td><?php echo $index + 1; ?></td>
                         <td><?php echo htmlspecialchars($documento['Documento']); ?></td>
-                        <td>
-                            <span class="badge <?php echo $documento['EstadoRevision'] === 'Pendiente' ? 'bg-warning text-dark' : 'bg-success'; ?>">
-                                <?php echo htmlspecialchars($documento['EstadoRevision']); ?>
+                        <td id="estado-documento-<?php echo $documento['idTipoDocumento']; ?>">
+                            <span class="badge <?php echo $documento['EstadoRevision'] === 'Pendiente' ? 'bg-warning text-dark' : (isset($documento['EstadoRevision']) && $documento['EstadoRevision'] !== 'Pendiente' ? 'bg-success' : ''); ?>"
+                                  id="badge-estado-<?php echo $documento['idTipoDocumento']; ?>">
+                                <?php echo htmlspecialchars($documento['EstadoRevision'] ?? 'Pendiente'); ?>
                             </span>
                         </td>
-                        <td><?php echo htmlspecialchars($documento['Comentarios'] ?? ''); ?></td>
-                        <td>
-                            <div class="d-flex flex-column gap-1">
-                                <form method="POST" enctype="multipart/form-data" class="upload-form">
-                                    <input type="hidden" name="expediente" value="<?php echo htmlspecialchars($_GET['expediente']); ?>">
-                                    <input type="hidden" name="curp" value="<?php echo htmlspecialchars($_GET['curp']); ?>">
-                                    <input type="hidden" name="tipoEvaluacion" value="<?php echo htmlspecialchars($_GET['tipoEvaluacion']); ?>">
-
+                        <td id="comentarios-documento-<?php echo $documento['idTipoDocumento']; ?>"><?php echo htmlspecialchars($documento['Comentarios'] ?? ''); ?></td>
+                        <td id="acciones-documento-<?php echo $documento['idTipoDocumento']; ?>">
+                            <?php if (is_null($documento['RutaArchivo'])): ?>
+                                <form id="form-subir-<?php echo $documento['idTipoDocumento']; ?>" enctype="multipart/form-data">
                                     <div class="d-flex gap-1 align-items-center">
+                                        <input type="hidden" name="accion" value="subir_documento_ajax">
                                         <input type="hidden" name="idTipoDocumento" value="<?php echo $documento['idTipoDocumento']; ?>">
                                         <input type="file" name="documento" class="form-control form-control-sm w-50" required accept=".pdf">
                                         <input type="text" name="comentarios" class="form-control form-control-sm w-50" placeholder="Comentarios (opcional)">
-                                        <button type="submit" name="subir_documento" class="btn btn-success btn-sm mt-0">Subir</button>
+                                        <button type="button" class="btn btn-success btn-sm mt-0 btn-subir"
+                                                data-id-tipo-documento="<?php echo $documento['idTipoDocumento']; ?>">Subir</button>
                                     </div>
                                 </form>
-
-                                <?php if (!is_null($documento['RutaArchivo'])): ?>
-                                    <form method="POST" class="eliminar-documento-form">
+                            <?php else: ?>
+                                <div class="d-flex flex-column gap-1">
+                                    <form id="form-eliminar-<?php echo $documento['idTipoDocumento']; ?>">
+                                        <input type="hidden" name="accion" value="eliminar_documento_ajax">
                                         <input type="hidden" name="idDocumento" value="<?php echo $documento['idDocumento']; ?>">
-                                        <button type="submit" name="eliminar_documento" class="btn btn-danger btn-sm eliminar-documento w-100">Eliminar</button>
+                                        <button type="button" class="btn btn-danger btn-sm w-100 btn-eliminar"
+                                                data-id-tipo-documento="<?php echo $documento['idTipoDocumento']; ?>"
+                                                data-id-documento="<?php echo $documento['idDocumento']; ?>"
+                                                data-ruta-archivo="<?php echo htmlspecialchars($documento['RutaArchivo']); ?>">Eliminar</button>
                                     </form>
-                                <?php endif; ?>
-
-                                <?php if (!is_null($documento['RutaArchivo'])): ?>
-                                    <a href="<?php echo htmlspecialchars($documento['RutaArchivo']); ?>" target="_blank" class="btn btn-info btn-sm visualizar-documento w-100">Visualizar</a>
-                                <?php endif; ?>
-
-                                <button type="button" class="btn btn-warning btn-sm w-100" data-bs-toggle="modal" data-bs-target="#editarModal<?php echo $documento['idDocumento']; ?>">Editar</button>
-                            </div>
+                                    <a href="#" class="btn btn-info btn-sm visualizar-documento w-100"
+                                       data-url="<?php echo htmlspecialchars($documento['RutaArchivo']); ?>">Visualizar</a>
+                                </div>
+                            <?php endif; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -402,23 +311,120 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enviar_revision'])) {
         </form>
     </div>
 
-     <div class="modal fade" id="cargandoModal" tabindex="-1" aria-labelledby="cargandoModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="cargandoModalLabel">Cargando Documento...</h5>
-                </div>
-                <div class="modal-body text-center">
-                    <div class="spinner-border" role="status">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                    <p class="mt-2">Por favor, espere...</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <?php include 'footer.php'; ?>
+    <script>
+        $(document).ready(function () {
+            // Función para manejar la subida de documentos vía AJAX
+            $('.btn-subir').on('click', function () {
+                const idTipoDocumento = $(this).data('id-tipo-documento');
+                const form = $('#form-subir-' + idTipoDocumento)[0];
+                const formData = new FormData(form);
+                const filaDocumento = $('#fila-documento-' + idTipoDocumento);
+                const accionesDocumento = $('#acciones-documento-' + idTipoDocumento);
+                const estadoDocumento = $('#estado-documento-' + idTipoDocumento);
+
+                $.ajax({
+                    url: '', // La misma página
+                    type: 'POST',
+                    data: formData,
+                    contentType: false,
+                    cache: false,
+                    processData: false,
+                    dataType: 'json',
+                    success: function (response) {
+                        if (response.success) {
+                            $('#mensajes').html('<div class="alert alert-success">' + response.success + '</div>');
+                            estadoDocumento.html('<span class="badge bg-success" id="badge-estado-' + idTipoDocumento + '">Enviado</span>');
+                            accionesDocumento.html(`
+                                <div class="d-flex flex-column gap-1">
+                                    <form id="form-eliminar-${idTipoDocumento}">
+                                        <input type="hidden" name="accion" value="eliminar_documento_ajax">
+                                        <input type="hidden" name="idDocumento" value="${response.idDocumento}">
+                                        <button type="button" class="btn btn-danger btn-sm w-100 btn-eliminar"
+                                                data-id-tipo-documento="${idTipoDocumento}"
+                                                data-id-documento="${response.idDocumento}"
+                                                data-ruta-archivo="${response.rutaArchivo}">Eliminar</button>
+                                    </form>
+                                    <a href="#" class="btn btn-info btn-sm visualizar-documento w-100" data-url="${response.rutaArchivo}">Visualizar</a>
+                                </div>
+                            `);
+                        } else if (response.error) {
+                            $('#mensajes').html('<div class="alert alert-danger">' + response.error + '</div>');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        $('#mensajes').html('<div class="alert alert-danger">Error al subir el documento: ' + error + '</div>');
+                    }
+                });
+            });
+
+            // Función para manejar la eliminación de documentos vía AJAX
+            $(document).on('click', '.btn-eliminar', function () {
+                const idDocumento = $(this).data('id-documento');
+                const idTipoDocumento = $(this).data('id-tipo-documento');
+                const rutaArchivo = $(this).data('ruta-archivo');
+                const filaDocumento = $('#fila-documento-' + idTipoDocumento);
+                const accionesDocumento = $('#acciones-documento-' + idTipoDocumento);
+                const estadoDocumento = $('#estado-documento-' + idTipoDocumento);
+
+                if (confirm('¿Estás seguro de que deseas eliminar este documento?')) {
+                    $.ajax({
+                        url: '', // La misma página
+                        type: 'POST',
+                        data: { accion: 'eliminar_documento_ajax', idDocumento: idDocumento },
+                        dataType: 'json',
+                        success: function (response) {
+                            if (response.success) {
+                                $('#mensajes').html('<div class="alert alert-success">' + response.success + '</div>');
+                                estadoDocumento.html('<span class="badge bg-warning text-dark" id="badge-estado-' + idTipoDocumento + '">Pendiente</span>');
+                                accionesDocumento.html(`
+                                    <form id="form-subir-${idTipoDocumento}" enctype="multipart/form-data">
+                                        <div class="d-flex gap-1 align-items-center">
+                                            <input type="hidden" name="accion" value="subir_documento_ajax">
+                                            <input type="hidden" name="idTipoDocumento" value="${idTipoDocumento}">
+                                            <input type="file" name="documento" class="form-control form-control-sm w-50" required accept=".pdf">
+                                            <input type="text" name="comentarios" class="form-control form-control-sm w-50" placeholder="Comentarios (opcional)">
+                                            <button type="button" class="btn btn-success btn-sm mt-0 btn-subir" data-id-tipo-documento="${idTipoDocumento}">Subir</button>
+                                        </div>
+                                    </form>
+                                `);
+                            } else if (response.error) {
+                                $('#mensajes').html('<div class="alert alert-danger">' + response.error + '</div>');
+                            }
+                        },
+                        error: function (xhr, status, error) {
+                            $('#mensajes').html('<div class="alert alert-danger">Error al eliminar el documento: ' . error + '</div>');
+                        }
+                    });
+                }
+            });
+
+            // Visualizar Documento
+            $(document).on('click', '.visualizar-documento', function (e) {
+                e.preventDefault();
+                const url = $(this).data('url');
+                const modal = `
+                    <div class="modal fade" id="visualizarModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Visualizar Documento</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <iframe src="${url}" width="100%" height="500px"></iframe>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                $('body').append(modal);
+                $('#visualizarModal').modal('show').on('hidden.bs.modal', function () {
+                    $(this).remove();
+                });
+            });
+        });
+    </script>   
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

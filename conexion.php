@@ -3,7 +3,7 @@
 $host = "localhost"; 
 $username = "root"; 
 $password = ""; //
-$dbname = "gestionc3"; 
+$dbname = "GestionDocumental"; 
 
 try {
     // Crear conexión PDO
