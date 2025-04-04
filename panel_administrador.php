@@ -111,9 +111,9 @@ $nombre_admin = htmlspecialchars($_SESSION['usuario']);
                             <div class="card text-center shadow-sm">
                                 <div class="card-body">
                                     <i class="fas fa-folder-open fa-3x text-primary mb-3"></i>
-                                    <h5 class="card-title">Gestión de Expedientes</h5>
-                                    <p class="card-text">Crea y administra expedientes, elementos, y sus documentos.</p>
-                                    <a href="gestion_expedientes.php" class="btn btn-primary">Acceder</a>
+                                    <h5 class="card-title">Gestión de Listados</h5>
+                                    <p class="card-text">Crea y administra listados de elementos, y sus documentos.</p>
+                                    <a href="gestion_listados.php" class="btn btn-primary">Acceder</a>
                                 </div>
                             </div>
                         </div>

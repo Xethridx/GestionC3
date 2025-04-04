@@ -31,16 +31,16 @@ $rol = $_SESSION['rol'] ?? null;
                         <?php if ($rol === 'administrador'): ?>
                             <li class="nav-item"><a class="nav-link" href="panel_administrador.php">Panel administrador</a></li>
                             <li class="nav-item"><a class="nav-link" href="gestion_usuarios.php">Gestión de Usuarios</a></li>
-                            <li class="nav-item"><a class="nav-link" href="gestion_expedientes.php">Gestion de Expedientes</a></li>
+                            <li class="nav-item"><a class="nav-link" href="gestion_listados.php">Gestion de Listados</a></li>
                             <li class="nav-item"><a class="nav-link" href="tickets_soporte.php">Tickets de Soporte</a></li>
                             <li class="nav-item"><a class="nav-link" href="validacion_documentos.php">Validación de Documentos</a></li>
                             <li class="nav-item"><a class="nav-link" href="padron_evaluados.php">Padrón de Evaluados</a></li>
                         <?php elseif ($rol === 'gestor'): ?>
                             <li class="nav-item"><a class="nav-link" href="panel_gestor.php">Panel Gestor</a></li>
-                            <li class="nav-item"><a class="nav-link" href="gestion_expedientes.php">Gestion de Expedientes</a></li>
+                            <li class="nav-item"><a class="nav-link" href="gestion_listados.php">Gestion de Listados</a></li>
                         <?php elseif ($rol === 'enlace'): ?>
                             <li class="nav-item"><a class="nav-link" href="panel_enlace.php">Panel Enlace</a></li>
-                            <li class="nav-item"><a class="nav-link" href="gestion_expedientes.php">Gestion de Expedientes</a></li>
+                            <li class="nav-item"><a class="nav-link" href="gestion_listados.php">Gestion de Listados</a></li>
                             <li class="nav-item"><a class="nav-link" href="soporte.php">Soporte</a></li>
                         <?php elseif ($rol === 'coordinacion'): ?>
                             <li class="nav-item"><a class="nav-link" href="panel_coordinador.php">Panel Coordinador</a></li>

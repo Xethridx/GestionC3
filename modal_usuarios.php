@@ -1,10 +1,10 @@
 <?php
 include 'conexion.php';
 
-$expedienteId = isset($_GET['expedienteId']) ? intval($_GET['expedienteId']) : 0;
+$listadoId = isset($_GET['listadoId']) ? intval($_GET['listadoId']) : 0;
 
-if (!$expedienteId) {
-    echo "<div class='alert alert-danger'>Error: Expediente ID no válido.</div>";
+if (!$listadoId) {
+    echo "<div class='alert alert-danger'>Error: Listado ID no válido.</div>";
     exit;
 }
 
@@ -12,16 +12,14 @@ try {
     $stmtUsuarios = $conn->prepare("
         SELECT e.CURP, CONCAT(e.Nombre, ' ', e.ApellidoP, ' ', e.ApellidoM) AS NombreCompleto
         FROM programacion_evaluados e
-        INNER JOIN documentos_expediente de ON e.idSolicitud = de.idElemento
-        WHERE de.idExpediente = :expedienteId
-        GROUP BY e.CURP, e.Nombre, e.ApellidoP, e.ApellidoM
+        WHERE e.idListadoEvaluados = :listadoId
         ORDER BY e.ApellidoP, e.ApellidoM, e.Nombre
     ");
-    $stmtUsuarios->bindParam(':expedienteId', $expedienteId, PDO::PARAM_INT);
+    $stmtUsuarios->bindParam(':listadoId', $listadoId, PDO::PARAM_INT);
     $stmtUsuarios->execute();
     $usuarios = $stmtUsuarios->fetchAll(PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    echo "<div class='alert alert-danger'>Error al obtener usuarios: " . $e->getMessage() . "</div>";
+    echo "<div class='alert alert-danger'>Error al obtener evaluados: " . $e->getMessage() . "</div>";
     exit;
 }
 ?>
@@ -37,7 +35,7 @@ try {
         </thead>
         <tbody>
             <?php if (empty($usuarios)): ?>
-                <tr><td colspan="4" class="text-center">No hay usuarios asignados a este expediente.</td></tr>
+                <tr><td colspan="4" class="text-center">No hay evaluados asignados a este listado.</td></tr>
             <?php else: ?>
                 <?php foreach ($usuarios as $index => $usuario): ?>
                     <tr>
@@ -45,7 +43,7 @@ try {
                         <td><?php echo htmlspecialchars($usuario['CURP']); ?></td>
                         <td><?php echo htmlspecialchars($usuario['NombreCompleto']); ?></td>
                         <td>
-                            <a href="ver_documentos.php?curp=<?php echo htmlspecialchars($usuario['CURP']); ?>&expedienteId=<?php echo $expedienteId; ?>" class="btn btn-info btn-sm">Ver Documentos</a>
+                            <a href="ver_documentos.php?curp=<?php echo htmlspecialchars($usuario['CURP']); ?>&listadoId=<?php echo $listadoId; ?>" class="btn btn-info btn-sm">Ver Documentos</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>
