@@ -56,7 +56,6 @@ if (!isset($_SESSION['usuario']) || !in_array($_SESSION['rol'], ['administrador'
                     </div>
                 </div>
             </div>
-            <p><small>Reemplaza "VIDEO_ID_1" y "VIDEO_ID_2" con los IDs reales de tus videos de YouTube o incrusta videos desde otra plataforma si es necesario.</small></p>
         </section>
 
         <section class="mb-5">
@@ -74,7 +73,6 @@ if (!isset($_SESSION['usuario']) || !in_array($_SESSION['rol'], ['administrador'
                 <li><i class="fas fa-phone me-2"></i> <strong>Teléfono de Soporte:</strong> +1-555-123-4567 (Horario de atención: Lunes a Viernes, 9am - 5pm)</li>
                 <li><i class="fab fa-whatsapp me-2"></i> <strong>WhatsApp Soporte:</strong> <a href="https://wa.me/NUMERO_DE_TELEFONO_WHATSAPP" target="_blank">+1-555-987-6543</a> (Solo mensajes)</li>
             </ul>
-             <p class="mt-3"><small>Asegúrate de reemplazar la información de contacto de ejemplo con los datos reales de soporte de tu organización.</small></p>
         </section>
 
         <section>
@@ -85,7 +83,6 @@ if (!isset($_SESSION['usuario']) || !in_array($_SESSION['rol'], ['administrador'
                 <li><i class="fas fa-link me-2"></i> <a href="https://www.example.com/guias" target="_blank">Guías Paso a Paso Adicionales</a></li>
                 <li><i class="fas fa-link me-2"></i> <a href="https://status.example.com" target="_blank">Página de Estado del Sistema</a> (Para verificar si hay interrupciones o mantenimiento)</li>
             </ul>
-             <p class="mt-3"><small>Reemplaza los enlaces de ejemplo con los recursos de ayuda reales que desees ofrecer a tus usuarios.</small></p>
         </section>
 
     </div>
